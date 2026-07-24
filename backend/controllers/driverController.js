@@ -1,5 +1,6 @@
 import { DriverRepository } from '../repositories/driverRepository.js';
 import { logRideLocation } from '../repositories/mongoRepository.js';
+import { formatAssetUrl } from '../utils/formatUrl.js';
 
 export const DriverController = {
   async getProfile(req, res, next) {
@@ -7,11 +8,18 @@ export const DriverController = {
       const driver = await DriverRepository.findById(req.user.id);
       const vehicle = await DriverRepository.getVehicle(req.user.id);
       
+      const formattedPhoto = formatAssetUrl(driver?.profile_photo || driver?.profile_photo_url || driver?.profile_image);
+      const formattedLicense = formatAssetUrl(driver?.driving_licence_image);
+
       return res.json({
         success: true,
         message: 'Driver profile retrieved.',
         data: {
           ...driver,
+          profile_photo: formattedPhoto,
+          profile_photo_url: formattedPhoto,
+          driving_licence_image: formattedLicense,
+          license_image_url: formattedLicense,
           vehicle
         }
       });

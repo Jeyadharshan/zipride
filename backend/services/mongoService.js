@@ -5,6 +5,7 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { formatAssetUrl } from '../utils/formatUrl.js';
 dotenv.config();
 
 let client = null;
@@ -99,10 +100,18 @@ export const MongoService = {
     }
 
     if (doc) {
+      const rawProfilePhoto = doc.profilePhoto || doc.profile_photo_url || doc.profile_photo || null;
+      const rawLicensePhoto = doc.drivingLicense || doc.license_image_url || doc.license_photo || null;
+      const formattedProfilePhoto = formatAssetUrl(rawProfilePhoto);
+      const formattedLicensePhoto = formatAssetUrl(rawLicensePhoto);
+
       return {
         ...doc,
-        profile_photo_url: doc.profilePhoto || doc.profile_photo_url || doc.profile_photo || null,
-        license_image_url: doc.drivingLicense || doc.license_image_url || doc.license_photo || null,
+        profilePhoto: formattedProfilePhoto,
+        profile_photo: formattedProfilePhoto,
+        profile_photo_url: formattedProfilePhoto,
+        drivingLicense: formattedLicensePhoto,
+        license_image_url: formattedLicensePhoto,
       };
     }
     return null;

@@ -9,6 +9,7 @@ import { sendSuccess, sendError, sendPaginated } from '../utils/response.js';
 import { parsePagination } from '../utils/pagination.js';
 import { AuditService } from '../services/auditService.js';
 import { NotificationService } from '../services/notificationService.js';
+import { formatAssetUrl } from '../utils/formatUrl.js';
 import db from '../config/db.js';
 
 export const AdminController = {
@@ -134,8 +135,12 @@ export const AdminController = {
         try {
           mongoDocs = await MongoService.getDriverDocuments(row.profile_id);
         } catch (e) {}
-        const profilePhoto = row.direct_profile_photo || row.profile_avatar || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || row.mysql_profile_photo || null;
-        const licensePhoto = row.direct_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || null;
+        const rawProfilePhoto = row.direct_profile_photo || row.profile_avatar || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || mongoDocs?.profilePhoto || row.mysql_profile_photo || null;
+        const rawLicensePhoto = row.direct_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || mongoDocs?.drivingLicense || null;
+        
+        const profilePhoto = formatAssetUrl(rawProfilePhoto);
+        const licensePhoto = formatAssetUrl(rawLicensePhoto);
+
         return {
           ...row,
           profile_photo: profilePhoto,
@@ -179,8 +184,12 @@ export const AdminController = {
             try {
               mongoDocs = await MongoService.getDriverDocuments(row.profile_id);
             } catch (e) {}
-            const profilePhoto = row.direct_profile_photo || row.profile_avatar || row.mysql_profile_photo || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || mongoDocs?.profilePhoto || null;
-            const licensePhoto = row.direct_license_photo || row.mysql_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || mongoDocs?.drivingLicense || null;
+            const rawProfilePhoto = row.direct_profile_photo || row.profile_avatar || row.mysql_profile_photo || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || mongoDocs?.profilePhoto || null;
+            const rawLicensePhoto = row.direct_license_photo || row.mysql_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || mongoDocs?.drivingLicense || null;
+
+            const profilePhoto = formatAssetUrl(rawProfilePhoto);
+            const licensePhoto = formatAssetUrl(rawLicensePhoto);
+
             return {
               ...row,
               profile_photo: profilePhoto,
@@ -213,6 +222,9 @@ export const AdminController = {
         });
       }
 
+      const formattedProfilePhoto = formatAssetUrl(mongoDocs.profilePhoto || mongoDocs.profile_photo_url || mongoDocs.profile_photo);
+      const formattedDrivingLicense = formatAssetUrl(mongoDocs.drivingLicense || mongoDocs.license_image_url || mongoDocs.license_photo);
+
       return sendSuccess(res, 'Driver documents retrieved.', {
         driverId: mongoDocs.driverId,
         profileId: mongoDocs.profileId,
@@ -220,8 +232,10 @@ export const AdminController = {
         phone: mongoDocs.phone,
         email: mongoDocs.email,
         licenseNumber: mongoDocs.licenseNumber,
-        profilePhoto: mongoDocs.profilePhoto,
-        drivingLicense: mongoDocs.drivingLicense,
+        profilePhoto: formattedProfilePhoto,
+        profile_photo_url: formattedProfilePhoto,
+        drivingLicense: formattedDrivingLicense,
+        license_image_url: formattedDrivingLicense,
         verificationStatus: mongoDocs.verificationStatus,
         approvedBy: mongoDocs.approvedBy,
         approvedAt: mongoDocs.approvedAt,

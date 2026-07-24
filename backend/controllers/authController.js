@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { AuditService } from '../services/auditService.js';
 import { NotificationService } from '../services/notificationService.js';
+import { formatAssetUrl } from '../utils/formatUrl.js';
 import db from '../config/db.js';
 import { logAuditEvent } from '../repositories/mongoRepository.js';
 
@@ -435,9 +436,13 @@ export const AuthController = {
           const { default: DocumentService } = await import('../services/documentService.js');
           const driverDocuments = await DocumentService.getDriverDocumentByProfileId(user.id);
           if (driverDocuments) {
+            const formattedPhoto = formatAssetUrl(driverDocuments.profilePhoto || driverDocuments.profile_photo_url || driverDocuments.profile_photo);
+            const formattedLicense = formatAssetUrl(driverDocuments.drivingLicense || driverDocuments.license_image_url || driverDocuments.license_photo);
             responseData.verificationStatus = driverDocuments.verificationStatus || 'pending';
-            responseData.profilePhoto = driverDocuments.profilePhoto;
-            responseData.drivingLicense = driverDocuments.drivingLicense;
+            responseData.profilePhoto = formattedPhoto;
+            responseData.profile_photo_url = formattedPhoto;
+            responseData.drivingLicense = formattedLicense;
+            responseData.license_image_url = formattedLicense;
           }
         } catch (err) {
           console.warn('[authController] Failed to fetch driver documents on login:', err.message);
@@ -492,6 +497,7 @@ export const AuthController = {
 
   async getCurrentUser(req, res, next) {
     try {
+      const formattedPhoto = formatAssetUrl(req.user.profile_image || req.user.avatar_url);
       return res.json({
         success: true,
         message: 'Active profile retrieved.',
@@ -502,7 +508,11 @@ export const AuthController = {
             fullName: req.user.full_name,
             phone: req.user.phone,
             role: req.user.role,
-            username: req.user.username
+            username: req.user.username,
+            profile_image: formattedPhoto,
+            avatar_url: formattedPhoto,
+            profilePhoto: formattedPhoto,
+            profile_photo_url: formattedPhoto
           }
         }
       });

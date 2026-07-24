@@ -4,6 +4,7 @@
 import db from '../config/db.js';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { formatAssetUrl } from '../utils/formatUrl.js';
 
 const cleanParam = (val) => (val === undefined ? null : val);
 const cleanParams = (arr) => (Array.isArray(arr) ? arr.map(cleanParam) : []);
@@ -404,6 +405,7 @@ export const QueryRepository = {
           if (row.type === 'credit') row.type = 'deposit';
           if (row.type === 'debit') row.type = 'ride_payment';
         }
+
         if (row.verification_status !== undefined && table === 'driver_profiles') {
           row.verification_status = mapVerificationStatusToFrontend(row.verification_status);
           row.profile = {
@@ -414,11 +416,24 @@ export const QueryRepository = {
             const { MongoService } = await import('../services/mongoService.js');
             const docs = await MongoService.getDriverDocuments(row.id);
             if (docs) {
-              if (docs.profile_photo_url) row.profile_photo_url = docs.profile_photo_url;
-              if (docs.license_image_url) row.license_image_url = docs.license_image_url;
+              const photo = formatAssetUrl(docs.profile_photo_url || docs.profile_photo || docs.profilePhoto || row.profile_photo);
+              const license = formatAssetUrl(docs.license_image_url || docs.license_photo || docs.drivingLicense || row.driving_licence_image);
+              if (photo) {
+                row.profile_photo = photo;
+                row.profile_photo_url = photo;
+              }
+              if (license) {
+                row.driving_licence_image = license;
+                row.license_image_url = license;
+              }
             }
           } catch (err) {
             console.error('[queryRepository] MongoDB document load failed:', err.message);
+          }
+          if (row.profile_photo || row.profile_photo_url) {
+            const photo = formatAssetUrl(row.profile_photo || row.profile_photo_url);
+            row.profile_photo = photo;
+            row.profile_photo_url = photo;
           }
         }
       }
