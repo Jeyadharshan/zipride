@@ -41,6 +41,9 @@ export function StatCard({
 }
 
 export function Avatar({ label, src, className, onClick }: { label: string; src?: string; className?: string; onClick?: (e: React.MouseEvent) => void }) {
+  const [imgError, setImgError] = useState(false);
+  const showImage = Boolean(src && !imgError);
+
   return (
     <span
       className={cn(
@@ -49,10 +52,15 @@ export function Avatar({ label, src, className, onClick }: { label: string; src?
       )}
       onClick={onClick}
     >
-      {src ? (
-        <img src={src} alt={label} className="absolute inset-0 h-full w-full object-cover" />
+      {showImage ? (
+        <img
+          src={src}
+          alt={label || "Avatar"}
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={() => setImgError(true)}
+        />
       ) : (
-        label
+        label || "U"
       )}
     </span>
   );

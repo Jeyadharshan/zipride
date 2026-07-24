@@ -9,11 +9,13 @@ export const DriverRepository = {
   async findById(profileId) {
     const [rows] = await db.execute(
       `SELECT p.id, p.username, p.full_name, p.phone, p.email, p.profile_image,
+              dp.profile_photo, dp.driving_licence_image, dp.driving_licence_number,
+              COALESCE(dp.profile_photo, p.profile_image) AS profile_photo_url,
               p.account_status, p.phone_verified,
               dp.id AS driver_id, dp.driver_code, dp.license_number, dp.license_expiry,
               dp.experience_years, dp.vehicle_type, dp.total_rides, dp.completed_rides,
               dp.cancelled_rides, dp.total_earnings, dp.rating,
-              dp.verification_status, dp.is_online, dp.is_banned,
+              dp.verification_status, dp.is_online, dp.is_banned, dp.rejection_reason,
               v.id AS vehicle_id, v.vehicle_number, v.vehicle_brand, v.vehicle_model,
               v.vehicle_color, v.manufacturing_year, v.seating_capacity, v.fuel_type,
               v.verification_status AS vehicle_status

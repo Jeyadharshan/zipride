@@ -2,7 +2,7 @@ import express from 'express';
 import { DriverController } from '../controllers/driverController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireDriver, requireVerifiedDriver } from '../middleware/driver.js';
-import upload, { validateDriverDocumentFiles } from '../middleware/upload.js';
+import upload, { validateDriverDocumentFiles, processUploadedFiles } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -15,6 +15,6 @@ router.get('/profile', requireAuth, requireDriver, DriverController.getProfile);
 router.put('/profile', requireAuth, requireDriver, DriverController.updateProfile);
 router.get('/vehicle', requireAuth, requireDriver, DriverController.getVehicle);
 router.post('/location', requireAuth, requireVerifiedDriver, DriverController.updateLocation);
-router.post('/upload-docs', requireAuth, requireDriver, docUploads, validateDriverDocumentFiles, DriverController.uploadDocuments);
+router.post('/upload-docs', requireAuth, requireDriver, docUploads, validateDriverDocumentFiles, processUploadedFiles, DriverController.uploadDocuments);
 
 export default router;

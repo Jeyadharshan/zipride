@@ -17,6 +17,7 @@ import { DriverShell } from "@/driver/layouts/DriverShell";
 import { StatCard, Avatar, InteractivePhone } from "@/shared/components/kit/Primitives";
 import { useAuth } from "@/auth/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { resolveAssetUrl } from "@/shared/utils/resolveAssetUrl";
 
 const toInputDate = (dateStr?: string | null) => {
   if (!dateStr) return "";
@@ -91,6 +92,12 @@ export function DriverProfile() {
   const rating = driverProfile?.rating || 5.0;
   const initial = profile?.full_name ? profile.full_name[0] : "D";
   const name = profile?.full_name || "Driver Partner";
+  const avatarUrl = resolveAssetUrl(
+    (driverProfile as any)?.profile_photo ||
+    driverProfile?.profile_photo_url ||
+    (profile as any)?.profile_image ||
+    profile?.avatar_url
+  );
   const statusLabel =
     driverProfile?.verification_status === "approved" ||
     driverProfile?.verification_status === "Approved"
@@ -112,7 +119,7 @@ export function DriverProfile() {
           <div className="flex items-center gap-4">
             <Avatar
               label={initial}
-              src={driverProfile?.profile_photo_url || profile?.avatar_url || ""}
+              src={avatarUrl}
               className="h-20 w-20 text-2xl ring-4 ring-white/30"
             />
             <div>

@@ -101,13 +101,14 @@ export const AdminController = {
       const search = req.query.search || '';
       let sql = `
         SELECT
-          p.id AS profile_id, p.full_name, p.email, p.phone, p.account_status,
+          p.id AS profile_id, p.full_name, p.email, p.phone, p.account_status, p.profile_image AS profile_avatar,
           dp.id AS driver_id, dp.driver_code, dp.license_number, dp.verification_status,
           dp.is_online, dp.is_banned, dp.rating, dp.online_seconds, dp.created_at,
+          dp.profile_photo AS direct_profile_photo, dp.driving_licence_image AS direct_license_photo,
           COUNT(DISTINCT r.id) AS total_rides,
           SUM(CASE WHEN r.ride_status IN ('Ride Completed', 'completed') THEN 1 ELSE 0 END) AS completed_rides,
           COALESCE(SUM(CASE WHEN r.ride_status IN ('Ride Completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) ELSE 0 END), 0) AS total_earnings,
-          dd.profile_photo AS profile_photo_url,
+          dd.profile_photo AS mysql_profile_photo,
           v.vehicle_brand AS vehicle_make, v.vehicle_model, v.vehicle_color,
           v.vehicle_number AS license_plate, v.vehicle_type_id
         FROM driver_profiles dp
@@ -129,11 +130,15 @@ export const AdminController = {
 
       const { MongoService } = await import('../services/mongoService.js');
       const enriched = await Promise.all(rows.map(async (row) => {
-        const mongoDocs = await MongoService.getDriverDocuments(row.profile_id);
-        const profilePhoto = mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || row.profile_photo_url || null;
-        const licensePhoto = mongoDocs?.license_image_url || mongoDocs?.license_photo || null;
+        let mongoDocs = null;
+        try {
+          mongoDocs = await MongoService.getDriverDocuments(row.profile_id);
+        } catch (e) {}
+        const profilePhoto = row.direct_profile_photo || row.profile_avatar || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || row.mysql_profile_photo || null;
+        const licensePhoto = row.direct_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || null;
         return {
           ...row,
+          profile_photo: profilePhoto,
           profile_photo_url: profilePhoto,
           license_image_url: licensePhoto,
         };
@@ -149,7 +154,7 @@ export const AdminController = {
   async getDriverVerifications(req, res, next) {
     try {
       const [rows] = await db.query(
-        `SELECT p.id AS profile_id, p.full_name, p.email, p.phone,
+        `SELECT p.id AS profile_id, p.full_name, p.email, p.phone, p.profile_image AS profile_avatar,
                 dp.id AS driver_id, dp.driver_code,
                 COALESCE(dp.driving_licence_number, dp.license_number) AS license_number,
                 dp.verification_status, dp.verification_date, dp.verified_by, dp.rejection_reason,
@@ -174,10 +179,11 @@ export const AdminController = {
             try {
               mongoDocs = await MongoService.getDriverDocuments(row.profile_id);
             } catch (e) {}
-            const profilePhoto = mongoDocs?.profile_photo_url || row.direct_profile_photo || row.mysql_profile_photo || null;
-            const licensePhoto = mongoDocs?.license_image_url || row.direct_license_photo || row.mysql_license_photo || null;
+            const profilePhoto = row.direct_profile_photo || row.profile_avatar || row.mysql_profile_photo || mongoDocs?.profile_photo_url || null;
+            const licensePhoto = row.direct_license_photo || row.mysql_license_photo || mongoDocs?.license_image_url || null;
             return {
               ...row,
+              profile_photo: profilePhoto,
               profile_photo_url: profilePhoto,
               license_image_url: licensePhoto,
             };

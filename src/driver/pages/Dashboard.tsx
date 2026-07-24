@@ -7,6 +7,7 @@ import { Reveal } from "@/shared/components/kit/Reveal";
 import { cn } from "@/shared/utils/cn";
 import { useAuth } from "@/auth/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { resolveAssetUrl } from "@/shared/utils/resolveAssetUrl";
 
 
 
@@ -164,7 +165,12 @@ export function DriverDashboard() {
   const driverName = profile?.full_name ? profile.full_name.split(" ")[0] : "Driver";
   const avgRating = liveRating !== null ? Number(liveRating).toFixed(2) : Number(driverProfile?.rating || 5.0).toFixed(2);
   const driverRating = `${avgRating}`;
-  const avatarUrl = driverProfile?.profile_photo_url || profile?.avatar_url || "";
+  const avatarUrl = resolveAssetUrl(
+    (driverProfile as any)?.profile_photo ||
+    driverProfile?.profile_photo_url ||
+    (profile as any)?.profile_image ||
+    profile?.avatar_url
+  );
 
   const loadDashboardData = async () => {
     if (!profile?.id) return;

@@ -1,5 +1,16 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import multer from 'multer';
 import cloudinary from '../config/cloudinary.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsBaseDir = path.resolve(__dirname, '../uploads');
+
+if (!fs.existsSync(uploadsBaseDir)) {
+  fs.mkdirSync(uploadsBaseDir, { recursive: true });
+}
 
 // Setup local memoryStorage to buffer files before pushing to Cloudinary
 const storage = multer.memoryStorage();
@@ -55,34 +66,69 @@ export const validateDriverDocumentFiles = (req, res, next) => {
   next();
 };
 
+export const processUploadedFiles = async (req, res, next) => {
+  const filesToProcess = [];
+
+  if (req.file) {
+    filesToProcess.push(req.file);
+  }
+
+  if (req.files) {
+    if (Array.isArray(req.files)) {
+      filesToProcess.push(...req.files);
+    } else {
+      Object.values(req.files).forEach((arr) => {
+        if (Array.isArray(arr)) {
+          filesToProcess.push(...arr);
+        }
+      });
+    }
+  }
+
+  if (filesToProcess.length === 0) return next();
+
+  for (const file of filesToProcess) {
+    if (file.cloudinaryUrl) continue;
+
+    const ext = path.extname(file.originalname) || (file.mimetype === 'application/pdf' ? '.pdf' : '.jpg');
+    const safeName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
+
+    const isCloudinaryConfigured = Boolean(
+      process.env.CLOUDINARY_CLOUD_NAME && 
+      process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloudinary_cloud_name'
+    );
+
+    let success = false;
+    if (isCloudinaryConfigured && file.buffer) {
+      try {
+        const fileBufferStr = file.buffer.toString('base64');
+        const fileUri = `data:${file.mimetype};base64,${fileBufferStr}`;
+        const uploadResult = await cloudinary.uploader.upload(fileUri, {
+          folder: 'zipride/documents',
+          resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'image',
+        });
+        file.cloudinaryUrl = uploadResult.secure_url;
+        success = true;
+      } catch (err) {
+        console.warn('[Upload Middleware] Cloudinary upload failed, falling back to local disk:', err.message);
+      }
+    }
+
+    if (!success && file.buffer) {
+      const localFilePath = path.join(uploadsBaseDir, safeName);
+      fs.writeFileSync(localFilePath, file.buffer);
+      file.cloudinaryUrl = `/uploads/${safeName}`;
+      console.log(`[Upload Middleware] Saved uploaded file to disk: ${localFilePath} -> /uploads/${safeName}`);
+    }
+  }
+
+  next();
+};
+
 export const uploadToCloudinary = (folderName) => {
   return async (req, res, next) => {
-    if (!req.file) return next();
-
-    try {
-      console.log(`[Cloudinary Upload] Uploading to folder: "zipride/${folderName}"...`);
-      
-      const fileBufferStr = req.file.buffer.toString('base64');
-      const fileUri = `data:${req.file.mimetype};base64,${fileBufferStr}`;
-
-      const uploadResult = await cloudinary.uploader.upload(fileUri, {
-        folder: `zipride/${folderName}`,
-        resource_type: req.file.mimetype === 'application/pdf' ? 'raw' : 'image',
-        transformation: req.file.mimetype === 'application/pdf' ? undefined : [{ quality: 'auto:good', fetch_format: 'auto' }]
-      });
-
-      // Attach resulting Cloudinary URLs to request object
-      req.file.cloudinaryUrl = uploadResult.secure_url;
-      req.file.publicId = uploadResult.public_id;
-      next();
-    } catch (err) {
-      console.error('[Cloudinary Upload] Failed:', err.message);
-      
-      // Fallback: Store locally or mock in case Cloudinary keys are invalid/placeholder
-      const mockFilename = `${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
-      req.file.cloudinaryUrl = `/uploads/${mockFilename}`;
-      next();
-    }
+    await processUploadedFiles(req, res, next);
   };
 };
+
 export default upload;

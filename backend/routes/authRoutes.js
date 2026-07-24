@@ -2,7 +2,7 @@ import express from 'express';
 import { AuthController } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { registerRiderValidationRules, loginValidationRules, validateRequest } from '../middleware/validation.js';
-import upload, { uploadToCloudinary } from '../middleware/upload.js';
+import upload, { validateDriverDocumentFiles, processUploadedFiles } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -17,7 +17,7 @@ const driverUploads = upload.fields([
 router.post('/register', registerRiderValidationRules, validateRequest, AuthController.register);
 
 // Custom driver files uploading middleware
-router.post('/register/driver', driverUploads, AuthController.registerDriver);
+router.post('/register/driver', driverUploads, validateDriverDocumentFiles, processUploadedFiles, AuthController.registerDriver);
 
 router.post('/login', loginValidationRules, validateRequest, AuthController.login);
 router.post('/logout', requireAuth, AuthController.logout);
