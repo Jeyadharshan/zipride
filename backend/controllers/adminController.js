@@ -179,8 +179,8 @@ export const AdminController = {
             try {
               mongoDocs = await MongoService.getDriverDocuments(row.profile_id);
             } catch (e) {}
-            const profilePhoto = row.direct_profile_photo || row.profile_avatar || row.mysql_profile_photo || mongoDocs?.profile_photo_url || null;
-            const licensePhoto = row.direct_license_photo || row.mysql_license_photo || mongoDocs?.license_image_url || null;
+            const profilePhoto = row.direct_profile_photo || row.profile_avatar || row.mysql_profile_photo || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || mongoDocs?.profilePhoto || null;
+            const licensePhoto = row.direct_license_photo || row.mysql_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || mongoDocs?.drivingLicense || null;
             return {
               ...row,
               profile_photo: profilePhoto,
