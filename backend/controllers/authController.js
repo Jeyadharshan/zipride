@@ -357,14 +357,9 @@ export const AuthController = {
       // Driver Verification Guard
       if (user.role === 'driver') {
         const [[driverProf]] = await db.query(
-          'SELECT verification_status, is_banned FROM driver_profiles WHERE profile_id = ?',
+          'SELECT verification_status FROM driver_profiles WHERE profile_id = ?',
           [user.id]
         );
-        if (driverProf) {
-          if (driverProf.is_banned) {
-            return res.status(403).json({ success: false, message: 'Your driver account has been banned by the administrator.' });
-          }
-        }
       }
 
       // Check user's role against target login portal role if specified
