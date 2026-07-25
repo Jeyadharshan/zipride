@@ -250,105 +250,116 @@ export const AdminController = {
 
   async approveDriver(req, res, next) {
     try {
-      const driverId = parseInt(req.params.id);
+      const driverIdParam = req.params.id;
       const { DriverRepository } = await import('../repositories/driverRepository.js');
-      const { default: DocumentService } = await import('../services/documentService.js');
       
-      await DriverRepository.setVerificationStatus(driverId, 'Verified', req.user?.id || null, null);
+      const [[dp]] = await db.query(
+        'SELECT id, profile_id FROM driver_profiles WHERE id = ? OR profile_id = ?',
+        [driverIdParam, driverIdParam]
+      );
 
-      // Fetch driver's profile_id to send notifications
-      const [[dp]] = await db.query('SELECT profile_id FROM driver_profiles WHERE id = ?', [driverId]);
-      if (dp && dp.profile_id) {
-        // Update MongoDB verification status
-        try {
-          await DocumentService.updateVerificationStatus(
-            dp.profile_id,
-            'approved',
-            req.user?.id || 'admin'
-          );
-        } catch (err) {
-          console.warn('[adminController] MongoDB update failed:', err.message);
-        }
-
-        await NotificationService.sendPushNotification(
-          dp.profile_id,
-          'Driver Verified',
-          'Your driver account has been verified by the administrator. You can now go online and accept rides!'
-        );
-        
-        await AuditService.logAction({
-          profileId: dp.profile_id,
-          action: 'Driver Approval',
-          tableName: 'driver_profiles',
-          recordId: String(driverId),
-          ipAddress: req.ip,
-          notes: 'Driver verified by administrator'
+      if (!dp) {
+        return res.status(404).json({
+          success: false,
+          message: 'Driver profile not found.'
         });
       }
 
-      await AuditService.logAdminAction({
-        adminId: req.user?.id || 'admin',
-        action: 'DRIVER_VERIFIED',
-        affectedId: String(driverId),
-        affectedTable: 'driver_profiles',
-        ipAddress: req.ip,
-      });
+      const driverIntId = dp.id;
+      const adminId = (req.user?.id && typeof req.user.id === 'string' && req.user.id.length === 36 && req.user.id !== 'admin') ? req.user.id : null;
+
+      // 1. Primary DB status update
+      await DriverRepository.setVerificationStatus(driverIntId, 'Verified', adminId, null);
+
+      // 2. Secondary side-effects (safe error catching)
+      if (dp.profile_id) {
+        try {
+          const { default: DocumentService } = await import('../services/documentService.js');
+          await DocumentService.updateVerificationStatus(dp.profile_id, 'approved', adminId || 'admin').catch(() => {});
+        } catch (e) {}
+
+        try {
+          await NotificationService.sendPushNotification(
+            dp.profile_id,
+            'Driver Verified',
+            'Your driver account has been verified by the administrator. You can now go online and accept rides!'
+          ).catch(() => {});
+        } catch (e) {}
+
+        try {
+          await AuditService.logAction({
+            profileId: adminId,
+            action: 'DRIVER_VERIFIED',
+            tableName: 'driver_profiles',
+            recordId: String(driverIntId),
+            ipAddress: req.ip,
+            notes: 'Driver verified by administrator'
+          }).catch(() => {});
+        } catch (e) {}
+      }
 
       return sendSuccess(res, 'Driver verified successfully.');
     } catch (err) {
+      console.error('[approveDriver] Error:', err.message);
       next(err);
     }
   },
 
   async rejectDriver(req, res, next) {
     try {
-      const driverId = parseInt(req.params.id);
+      const driverIdParam = req.params.id;
       const { reason } = req.body;
       const { DriverRepository } = await import('../repositories/driverRepository.js');
-      const { default: DocumentService } = await import('../services/documentService.js');
-      
-      const rejectionReasonVal = reason || 'Document verification failed.';
-      await DriverRepository.setVerificationStatus(driverId, 'Rejected', req.user?.id || null, rejectionReasonVal);
 
-      // Fetch driver's profile_id to send notifications
-      const [[dp]] = await db.query('SELECT profile_id FROM driver_profiles WHERE id = ?', [driverId]);
-      if (dp && dp.profile_id) {
-        try {
-          await DocumentService.updateVerificationStatus(
-            dp.profile_id,
-            'rejected',
-            req.user?.id || 'admin',
-            rejectionReasonVal
-          );
-        } catch (err) {
-          console.warn('[adminController] MongoDB update failed:', err.message);
-        }
+      const [[dp]] = await db.query(
+        'SELECT id, profile_id FROM driver_profiles WHERE id = ? OR profile_id = ?',
+        [driverIdParam, driverIdParam]
+      );
 
-        await NotificationService.sendPushNotification(
-          dp.profile_id,
-          'Driver Verification Rejected',
-          `Your driver verification was rejected: ${rejectionReasonVal}`
-        );
-        await AuditService.logAction({
-          profileId: dp.profile_id,
-          action: 'Driver Rejection',
-          tableName: 'driver_profiles',
-          recordId: String(driverId),
-          ipAddress: req.ip,
-          notes: `Driver rejected by administrator: ${rejectionReasonVal}`
+      if (!dp) {
+        return res.status(404).json({
+          success: false,
+          message: 'Driver profile not found.'
         });
       }
 
-      await AuditService.logAdminAction({
-        adminId: req.user.id,
-        action: 'DRIVER_REJECTED',
-        affectedId: String(driverId),
-        affectedTable: 'driver_profiles',
-        ipAddress: req.ip,
-      });
+      const driverIntId = dp.id;
+      const adminId = (req.user?.id && typeof req.user.id === 'string' && req.user.id.length === 36 && req.user.id !== 'admin') ? req.user.id : null;
+      const rejectionReasonVal = reason || 'Document verification failed.';
 
-      return sendSuccess(res, 'Driver rejected.');
+      // 1. Primary DB status update
+      await DriverRepository.setVerificationStatus(driverIntId, 'Rejected', adminId, rejectionReasonVal);
+
+      // 2. Secondary side-effects (safe error catching)
+      if (dp.profile_id) {
+        try {
+          const { default: DocumentService } = await import('../services/documentService.js');
+          await DocumentService.updateVerificationStatus(dp.profile_id, 'rejected', adminId || 'admin', rejectionReasonVal).catch(() => {});
+        } catch (e) {}
+
+        try {
+          await NotificationService.sendPushNotification(
+            dp.profile_id,
+            'Driver Verification Rejected',
+            `Your driver verification was rejected: ${rejectionReasonVal}`
+          ).catch(() => {});
+        } catch (e) {}
+
+        try {
+          await AuditService.logAction({
+            profileId: adminId,
+            action: 'DRIVER_REJECTED',
+            tableName: 'driver_profiles',
+            recordId: String(driverIntId),
+            ipAddress: req.ip,
+            notes: `Driver rejected by administrator: ${rejectionReasonVal}`
+          }).catch(() => {});
+        } catch (e) {}
+      }
+
+      return sendSuccess(res, 'Driver verification rejected.');
     } catch (err) {
+      console.error('[rejectDriver] Error:', err.message);
       next(err);
     }
   },

@@ -17,9 +17,14 @@ export const AuditService = {
    */
   async logAction({ profileId, action, tableName = null, recordId = null, ipAddress = null, userAgent = null, notes = null }) {
     try {
+      let validProfileId = null;
+      if (profileId && typeof profileId === 'string' && profileId.length === 36 && profileId !== 'admin') {
+        const [[p]] = await db.execute('SELECT id FROM profiles WHERE id = ?', [profileId]);
+        if (p?.id) validProfileId = p.id;
+      }
       await db.execute(
         `INSERT INTO audit_logs (profile_id, action, table_name, record_id, created_at) VALUES (?, ?, ?, ?, NOW())`,
-        [profileId || null, action, tableName, recordId]
+        [validProfileId, action, tableName, recordId]
       );
     } catch (err) {
       // Audit must NEVER crash the calling code
