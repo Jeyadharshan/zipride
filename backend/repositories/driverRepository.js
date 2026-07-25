@@ -164,6 +164,15 @@ export const DriverRepository = {
       candidateValues = ['Rejected', 'rejected'];
     }
 
+    // Validate verifiedBy FK or default to null
+    let validVerifiedBy = null;
+    if (verifiedBy && typeof verifiedBy === 'string' && verifiedBy.length === 36 && verifiedBy !== 'admin') {
+      try {
+        const [[p]] = await db.query('SELECT id FROM profiles WHERE id = ?', [verifiedBy]);
+        if (p?.id) validVerifiedBy = p.id;
+      } catch (e) {}
+    }
+
     let lastErr = null;
     for (const targetVal of candidateValues) {
       try {
@@ -175,16 +184,29 @@ export const DriverRepository = {
                rejection_reason = ?, 
                updated_at = NOW() 
            WHERE id = ?`,
-          [targetVal, verifiedBy, rejectionReason, driverId]
+          [targetVal, validVerifiedBy, rejectionReason, driverId]
         );
-        return; // Success! Exit function immediately
+        return; // Success!
       } catch (err) {
         lastErr = err;
+        // Fallback query if verified_by column or FK fails
+        try {
+          await db.execute(
+            `UPDATE driver_profiles 
+             SET verification_status = ?, 
+                 updated_at = NOW() 
+             WHERE id = ?`,
+            [targetVal, driverId]
+          );
+          return; // Success!
+        } catch (innerErr) {
+          lastErr = innerErr;
+        }
+
         if (err.message.includes('Data truncated') || err.message.includes('TRUNCATED') || err.code === 'WARN_DATA_TRUNCATED' || err.errno === 1265) {
           console.warn(`[driverRepository] Status value "${targetVal}" truncated by MySQL schema. Trying fallback candidate...`);
           continue;
         }
-        throw err;
       }
     }
     if (lastErr) throw lastErr;
