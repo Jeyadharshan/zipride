@@ -144,6 +144,18 @@ export const DriverRepository = {
   },
 
   async setVerificationStatus(driverId, status, verifiedBy = null, rejectionReason = null) {
+    if (!status || typeof status !== 'string') {
+      throw new Error('Verification status is required.');
+    }
+    const cleanStatus = status.trim().toLowerCase();
+    const validStatuses = ['pending', 'verified', 'approved', 'rejected'];
+    
+    if (!validStatuses.includes(cleanStatus)) {
+      throw new Error(`Invalid verification status "${status}". Allowed values: pending, verified, rejected.`);
+    }
+
+    const targetStatus = cleanStatus === 'approved' ? 'verified' : cleanStatus;
+
     await db.execute(
       `UPDATE driver_profiles 
        SET verification_status = ?, 
@@ -152,7 +164,7 @@ export const DriverRepository = {
            rejection_reason = ?, 
            updated_at = NOW() 
        WHERE id = ?`,
-      [status, verifiedBy, rejectionReason, driverId]
+      [targetStatus, verifiedBy, rejectionReason, driverId]
     );
   },
 

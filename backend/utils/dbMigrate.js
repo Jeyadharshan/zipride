@@ -22,11 +22,16 @@ export async function runDatabaseMigrations() {
       }
     }
 
-    // Ensure verification_status is VARCHAR(50) so all status values (Verified, Approved, Rejected, Pending) work without truncation
-    console.log('[Migration] Ensuring driver_profiles.verification_status is VARCHAR(50)...');
-    await db.query(`ALTER TABLE driver_profiles MODIFY COLUMN verification_status VARCHAR(50) NOT NULL DEFAULT 'Pending'`).catch(err => {
-      console.warn('[Migration] Note on verification_status column modify:', err.message);
-    });
+    // Inspect verification_status column definition and alter to VARCHAR(50) if needed
+    const statusCol = columns.find(c => c.Field === 'verification_status');
+    const colType = (statusCol?.Type || '').toLowerCase();
+    
+    if (colType.includes('enum') || !colType.includes('varchar(50)')) {
+      console.log(`[Migration] Updating verification_status column from "${statusCol?.Type}" to VARCHAR(50)...`);
+      await db.query(`ALTER TABLE driver_profiles MODIFY COLUMN verification_status VARCHAR(50) NOT NULL DEFAULT 'pending'`).catch(err => {
+        console.warn('[Migration] Note on verification_status column modify:', err.message);
+      });
+    }
 
     console.log('✅ [Migration] Database schema check completed successfully.');
   } catch (err) {

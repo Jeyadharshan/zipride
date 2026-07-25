@@ -251,6 +251,10 @@ export const AdminController = {
   async approveDriver(req, res, next) {
     try {
       const driverIdParam = req.params.id;
+      if (!driverIdParam) {
+        return res.status(400).json({ success: false, message: 'Driver ID is required.' });
+      }
+
       const { DriverRepository } = await import('../repositories/driverRepository.js');
       
       const [[dp]] = await db.query(
@@ -268,8 +272,8 @@ export const AdminController = {
       const driverIntId = dp.id;
       const adminId = (req.user?.id && typeof req.user.id === 'string' && req.user.id.length === 36 && req.user.id !== 'admin') ? req.user.id : null;
 
-      // 1. Primary DB status update
-      await DriverRepository.setVerificationStatus(driverIntId, 'Verified', adminId, null);
+      // 1. Primary DB status update with standardized 'verified' value
+      await DriverRepository.setVerificationStatus(driverIntId, 'verified', adminId, null);
 
       // 2. Secondary side-effects (safe error catching)
       if (dp.profile_id) {
@@ -301,6 +305,9 @@ export const AdminController = {
       return sendSuccess(res, 'Driver verified successfully.');
     } catch (err) {
       console.error('[approveDriver] Error:', err.message);
+      if (err.message.includes('Invalid verification status') || err.message.includes('required')) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
       next(err);
     }
   },
@@ -308,6 +315,10 @@ export const AdminController = {
   async rejectDriver(req, res, next) {
     try {
       const driverIdParam = req.params.id;
+      if (!driverIdParam) {
+        return res.status(400).json({ success: false, message: 'Driver ID is required.' });
+      }
+
       const { reason } = req.body;
       const { DriverRepository } = await import('../repositories/driverRepository.js');
 
@@ -327,8 +338,8 @@ export const AdminController = {
       const adminId = (req.user?.id && typeof req.user.id === 'string' && req.user.id.length === 36 && req.user.id !== 'admin') ? req.user.id : null;
       const rejectionReasonVal = reason || 'Document verification failed.';
 
-      // 1. Primary DB status update
-      await DriverRepository.setVerificationStatus(driverIntId, 'Rejected', adminId, rejectionReasonVal);
+      // 1. Primary DB status update with standardized 'rejected' value
+      await DriverRepository.setVerificationStatus(driverIntId, 'rejected', adminId, rejectionReasonVal);
 
       // 2. Secondary side-effects (safe error catching)
       if (dp.profile_id) {
@@ -360,6 +371,9 @@ export const AdminController = {
       return sendSuccess(res, 'Driver verification rejected.');
     } catch (err) {
       console.error('[rejectDriver] Error:', err.message);
+      if (err.message.includes('Invalid verification status') || err.message.includes('required')) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
       next(err);
     }
   },
