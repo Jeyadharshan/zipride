@@ -134,7 +134,7 @@ app.use(morgan('dev')); // Console log requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static uploaded media with cross-origin CORS support
+// Serve static uploaded media with cross-origin CORS support and fallback placeholder
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -147,7 +147,12 @@ app.use('/uploads', (req, res, next) => {
 }, express.static(uploadsBaseDir, {
   maxAge: '1d',
   etag: true
-}));
+}), (req, res) => {
+  // If the requested upload file does not exist on disk, return a clean SVG placeholder image
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="background:#f1f5f9;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`);
+});
 
 // 5. Versioned API Routes (v1)
 app.use('/api/v1/auth', authRoutes);
