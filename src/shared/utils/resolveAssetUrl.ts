@@ -12,7 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 export function resolveAssetUrl(url: string | null | undefined): string {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url;
   const path = url.startsWith('/') ? url : `/${url}`;
   return `${API_URL}${path}`;
 }
