@@ -132,7 +132,7 @@ CREATE TABLE `driver_profiles` (
   `license_expiry` DATE DEFAULT NULL,
   `experience_years` INT DEFAULT NULL,
   `vehicle_type` VARCHAR(50) DEFAULT NULL,
-  `verification_status` ENUM('Pending', 'Verified', 'Approved', 'Rejected', 'Resubmit Documents') NOT NULL DEFAULT 'Pending',
+  `verification_status` VARCHAR(50) NOT NULL DEFAULT 'Pending',
   `verification_date` DATETIME DEFAULT NULL,
   `verified_by` CHAR(36) DEFAULT NULL,
   `rejection_reason` TEXT DEFAULT NULL,

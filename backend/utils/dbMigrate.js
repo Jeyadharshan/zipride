@@ -22,6 +22,12 @@ export async function runDatabaseMigrations() {
       }
     }
 
+    // Ensure verification_status is VARCHAR(50) so all status values (Verified, Approved, Rejected, Pending) work without truncation
+    console.log('[Migration] Ensuring driver_profiles.verification_status is VARCHAR(50)...');
+    await db.query(`ALTER TABLE driver_profiles MODIFY COLUMN verification_status VARCHAR(50) NOT NULL DEFAULT 'Pending'`).catch(err => {
+      console.warn('[Migration] Note on verification_status column modify:', err.message);
+    });
+
     console.log('✅ [Migration] Database schema check completed successfully.');
   } catch (err) {
     console.warn('⚠️ [Migration] Database migration check skipped or failed:', err.message);
