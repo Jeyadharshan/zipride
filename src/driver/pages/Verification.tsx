@@ -298,10 +298,10 @@ export function Verification() {
                         const licenceNum = numEl?.value;
 
                         if (photoFile) {
-                          const minB = 1 * 1024 * 1024;
-                          const maxB = 2 * 1024 * 1024;
+                          const minB = 10 * 1024; // 10 KB
+                          const maxB = 2 * 1024 * 1024; // 2 MB
                           if (photoFile.size < minB || photoFile.size > maxB) {
-                            alert(`Profile photo must be between 1 MB and 2 MB. Size: ${(photoFile.size / (1024 * 1024)).toFixed(2)} MB`);
+                            alert(`Profile photo must be up to 2 MB. Size: ${(photoFile.size / (1024 * 1024)).toFixed(2)} MB`);
                             return;
                           }
                         }

@@ -42,12 +42,12 @@ export const validateDriverDocumentFiles = (req, res, next) => {
         message: 'Invalid Profile Photo format. Allowed formats are JPG, JPEG, PNG, WEBP.'
       });
     }
-    const minSize = 1 * 1024 * 1024; // 1 MB
+    const minSize = 10 * 1024; // 10 KB
     const maxSize = 2 * 1024 * 1024; // 2 MB
     if (file.size < minSize || file.size > maxSize) {
       return res.status(400).json({
         success: false,
-        message: `Profile Photo size must be between 1 MB and 2 MB. Provided size is ${(file.size / (1024 * 1024)).toFixed(2)} MB.`
+        message: `Profile Photo size must be up to 2 MB. Provided size is ${(file.size / (1024 * 1024)).toFixed(2)} MB.`
       });
     }
   }

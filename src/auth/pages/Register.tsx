@@ -423,10 +423,10 @@ export function Register() {
                           onChange={(e) => {
                             const f = e.target.files?.[0] || null;
                             if (f) {
-                              const minB = 1 * 1024 * 1024;
-                              const maxB = 2 * 1024 * 1024;
+                              const minB = 10 * 1024; // 10 KB
+                              const maxB = 2 * 1024 * 1024; // 2 MB
                               if (f.size < minB || f.size > maxB) {
-                                alert(`Profile Photo must be between 1 MB and 2 MB. Uploaded file size: ${(f.size / (1024 * 1024)).toFixed(2)} MB`);
+                                alert(`Profile Photo must be up to 2 MB. Uploaded file size: ${(f.size / (1024 * 1024)).toFixed(2)} MB`);
                                 e.target.value = "";
                                 setProfilePhotoFile(null);
                                 return;
