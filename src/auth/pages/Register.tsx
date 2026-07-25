@@ -9,7 +9,8 @@ import { setupRecaptcha, sendOtpToPhone, setPendingVerification } from "@/lib/fi
 export function Register() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
+  const [rawPhone, setRawPhone] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,9 +29,16 @@ export function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const formattedPhone = `${countryCode}${rawPhone.trim().replace(/\D/g, "")}`;
+
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+
+    if (!rawPhone.trim()) {
+      alert("Mobile phone number is required.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       alert("Passwords do not match.");
@@ -75,7 +83,7 @@ export function Register() {
         return;
       }
 
-      const { data: dupPhone } = await supabase.from("profiles").select("id").eq("phone", phone.trim()).maybeSingle();
+      const { data: dupPhone } = await supabase.from("profiles").select("id").eq("phone", formattedPhone).maybeSingle();
       if (dupPhone) {
         alert("Phone number already registered.");
         setLoading(false);
@@ -111,7 +119,7 @@ export function Register() {
 
       // 3. Setup recaptcha and trigger Firebase OTP send
       const appVerifier = setupRecaptcha("recaptcha-container");
-      const confirmationResult = await sendOtpToPhone(phone, appVerifier);
+      const confirmationResult = await sendOtpToPhone(formattedPhone, appVerifier);
 
       // 4. Store verification payload globally
       setPendingVerification({
@@ -121,7 +129,7 @@ export function Register() {
           role,
           name: fullName,
           email,
-          phone,
+          phone: formattedPhone,
           username,
           password,
           dob: dob || null,
@@ -226,21 +234,43 @@ export function Register() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {/* Phone */}
+                {/* Phone Number with Country Code Dropdown */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="phone">
-                    Phone (with country code)
+                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="rawPhone">
+                    Mobile Number
                   </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center rounded-2xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring overflow-hidden">
+                    <div className="flex items-center gap-1 border-r border-border bg-muted/30 px-3 py-3 shrink-0">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <select
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                        className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground"
+                      >
+                        <option value="+91">🇮🇳 +91 (India)</option>
+                        <option value="+1">🇺🇸 +1 (USA / CA)</option>
+                        <option value="+44">🇬🇧 +44 (UK)</option>
+                        <option value="+971">🇦🇪 +971 (UAE)</option>
+                        <option value="+65">🇸🇬 +65 (Singapore)</option>
+                        <option value="+61">🇦🇺 +61 (Australia)</option>
+                        <option value="+94">🇱🇰 +94 (Sri Lanka)</option>
+                        <option value="+977">🇳🇵 +977 (Nepal)</option>
+                        <option value="+880">🇧🇩 +880 (Bangladesh)</option>
+                        <option value="+966">🇸🇦 +966 (Saudi Arabia)</option>
+                        <option value="+974">🇶🇦 +974 (Qatar)</option>
+                        <option value="+60">🇲🇾 +60 (Malaysia)</option>
+                        <option value="+49">🇩🇪 +49 (Germany)</option>
+                        <option value="+33">🇫🇷 +33 (France)</option>
+                      </select>
+                    </div>
                     <input
-                      id="phone"
+                      id="rawPhone"
                       type="tel"
-                      placeholder="+919876543210"
+                      placeholder="98765 43210"
                       required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none text-sm"
+                      value={rawPhone}
+                      onChange={(e) => setRawPhone(e.target.value)}
+                      className="w-full bg-transparent px-3 py-3.5 outline-none text-sm font-medium"
                     />
                   </div>
                 </div>
