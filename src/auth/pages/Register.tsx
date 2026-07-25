@@ -35,8 +35,9 @@ export function Register() {
     e.preventDefault();
     if (loading) return;
 
-    if (!rawPhone.trim()) {
-      alert("Mobile phone number is required.");
+    const digitsOnly = rawPhone.replace(/\D/g, "");
+    if (!digitsOnly || digitsOnly.length < 7) {
+      alert("Mobile phone number is required (at least 7 to 10 digits).");
       return;
     }
 
@@ -234,45 +235,61 @@ export function Register() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {/* Phone Number with Country Code Dropdown */}
-                <div>
+                {/* Mobile Number with Country Code Dropdown */}
+                <div className="col-span-1">
                   <label className="mb-1.5 block text-sm font-semibold" htmlFor="rawPhone">
-                    Mobile Number
+                    Mobile Number <span className="text-destructive">*</span>
                   </label>
-                  <div className="flex items-center rounded-2xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring overflow-hidden">
-                    <div className="flex items-center gap-1 border-r border-border bg-muted/30 px-3 py-3 shrink-0">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-2">
+                    {/* Country Code Picker */}
+                    <div className="relative flex items-center rounded-2xl border border-input bg-muted/40 px-2.5 py-3 shadow-sm focus-within:ring-2 focus-within:ring-ring shrink-0">
+                      <Phone className="h-4 w-4 text-muted-foreground mr-1 shrink-0" />
                       <select
+                        id="countryCode"
+                        aria-label="Country Code"
                         value={countryCode}
                         onChange={(e) => setCountryCode(e.target.value)}
-                        className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground"
+                        className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground pr-1"
                       >
-                        <option value="+91">🇮🇳 +91 (India)</option>
-                        <option value="+1">🇺🇸 +1 (USA / CA)</option>
-                        <option value="+44">🇬🇧 +44 (UK)</option>
-                        <option value="+971">🇦🇪 +971 (UAE)</option>
-                        <option value="+65">🇸🇬 +65 (Singapore)</option>
-                        <option value="+61">🇦🇺 +61 (Australia)</option>
-                        <option value="+94">🇱🇰 +94 (Sri Lanka)</option>
-                        <option value="+977">🇳🇵 +977 (Nepal)</option>
-                        <option value="+880">🇧🇩 +880 (Bangladesh)</option>
-                        <option value="+966">🇸🇦 +966 (Saudi Arabia)</option>
-                        <option value="+974">🇶🇦 +974 (Qatar)</option>
-                        <option value="+60">🇲🇾 +60 (Malaysia)</option>
-                        <option value="+49">🇩🇪 +49 (Germany)</option>
-                        <option value="+33">🇫🇷 +33 (France)</option>
+                        <option value="+91">🇮🇳 +91</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+971">🇦🇪 +971</option>
+                        <option value="+65">🇸🇬 +65</option>
+                        <option value="+61">🇦🇺 +61</option>
+                        <option value="+94">🇱🇰 +94</option>
+                        <option value="+977">🇳🇵 +977</option>
+                        <option value="+880">🇧🇩 +880</option>
+                        <option value="+966">🇸🇦 +966</option>
+                        <option value="+974">🇶🇦 +974</option>
+                        <option value="+60">🇲🇾 +60</option>
+                        <option value="+49">🇩🇪 +49</option>
+                        <option value="+33">🇫🇷 +33</option>
                       </select>
                     </div>
-                    <input
-                      id="rawPhone"
-                      type="tel"
-                      placeholder="98765 43210"
-                      required
-                      value={rawPhone}
-                      onChange={(e) => setRawPhone(e.target.value)}
-                      className="w-full bg-transparent px-3 py-3.5 outline-none text-sm font-medium"
-                    />
+
+                    {/* Mobile Digits Input */}
+                    <div className="flex-1 flex items-center rounded-2xl border border-input bg-background px-3 py-3 shadow-sm focus-within:ring-2 focus-within:ring-ring min-w-0">
+                      <input
+                        id="rawPhone"
+                        name="rawPhone"
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        placeholder="9876543210"
+                        required
+                        value={rawPhone}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^\d\s-]/g, "");
+                          setRawPhone(val);
+                        }}
+                        className="w-full bg-transparent outline-none text-sm font-semibold text-foreground placeholder:text-muted-foreground/60"
+                      />
+                    </div>
                   </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground truncate">
+                    Format: <span className="font-bold text-primary">{formattedPhone}</span>
+                  </p>
                 </div>
 
                 {/* Username */}
