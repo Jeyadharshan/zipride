@@ -147,25 +147,47 @@ export const DriverRepository = {
     if (!status || typeof status !== 'string') {
       throw new Error('Verification status is required.');
     }
-    const cleanStatus = status.trim().toLowerCase();
+    const lower = status.trim().toLowerCase();
     const validStatuses = ['pending', 'verified', 'approved', 'rejected'];
     
-    if (!validStatuses.includes(cleanStatus)) {
+    if (!validStatuses.includes(lower)) {
       throw new Error(`Invalid verification status "${status}". Allowed values: pending, verified, rejected.`);
     }
 
-    const targetStatus = cleanStatus === 'approved' ? 'verified' : cleanStatus;
+    // Prepare ordered candidate values to try against MySQL ENUM / VARCHAR schema
+    let candidateValues = [status];
+    if (lower === 'verified' || lower === 'approved') {
+      candidateValues = ['Approved', 'Verified', 'approved', 'verified'];
+    } else if (lower === 'pending') {
+      candidateValues = ['Pending', 'pending'];
+    } else if (lower === 'rejected') {
+      candidateValues = ['Rejected', 'rejected'];
+    }
 
-    await db.execute(
-      `UPDATE driver_profiles 
-       SET verification_status = ?, 
-           verification_date = NOW(), 
-           verified_by = ?, 
-           rejection_reason = ?, 
-           updated_at = NOW() 
-       WHERE id = ?`,
-      [targetStatus, verifiedBy, rejectionReason, driverId]
-    );
+    let lastErr = null;
+    for (const targetVal of candidateValues) {
+      try {
+        await db.execute(
+          `UPDATE driver_profiles 
+           SET verification_status = ?, 
+               verification_date = NOW(), 
+               verified_by = ?, 
+               rejection_reason = ?, 
+               updated_at = NOW() 
+           WHERE id = ?`,
+          [targetVal, verifiedBy, rejectionReason, driverId]
+        );
+        return; // Success! Exit function immediately
+      } catch (err) {
+        lastErr = err;
+        if (err.message.includes('Data truncated') || err.message.includes('TRUNCATED') || err.code === 'WARN_DATA_TRUNCATED' || err.errno === 1265) {
+          console.warn(`[driverRepository] Status value "${targetVal}" truncated by MySQL schema. Trying fallback candidate...`);
+          continue;
+        }
+        throw err;
+      }
+    }
+    if (lastErr) throw lastErr;
   },
 
   async setBanStatus(driverId, banned) {
