@@ -8,6 +8,7 @@ import { cn } from "@/shared/utils/cn";
 import { useAuth } from "@/auth/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { resolveAssetUrl } from "@/shared/utils/resolveAssetUrl";
+import { apiFetch } from "@/lib/api";
 
 export function DriverDashboard() {
   const navigate = useNavigate();
@@ -532,8 +533,8 @@ export function DriverDashboard() {
                   if (licenceFile) formData.append("licenseImage", licenceFile);
                   if (licenceNum) formData.append("drivingLicenceNumber", licenceNum);
 
-                  const token = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token");
-                  const res = await fetch("/api/driver/upload-docs", {
+                  const token = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token") || localStorage.getItem("zipride_jwt_token");
+                  const res = await apiFetch("/api/v1/driver/upload-docs", {
                     method: "POST",
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                     body: formData,

@@ -159,6 +159,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/v1/rider', riderRoutes);
 app.use('/api/v1/driver', driverRoutes);
+app.use('/api/driver', driverRoutes);
 app.use('/api/v1/rides', rideRoutes);
 app.use('/api/v1/wallet', walletRoutes);
 app.use('/api/v1/payments', paymentRoutes);

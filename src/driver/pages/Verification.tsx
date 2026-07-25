@@ -8,6 +8,7 @@ import { LogoMark } from "@/shared/components/brand/Logo";
 import { Reveal } from "@/shared/components/kit/Reveal";
 import { InteractivePhone } from "@/shared/components/kit/Primitives";
 import { resolveAssetUrl } from "@/shared/utils/resolveAssetUrl";
+import { apiFetch } from "@/lib/api";
 
 type VerificationStatus = "approved" | "pending" | "rejected";
 
@@ -309,10 +310,8 @@ export function Verification() {
                         const formData = new FormData();
                         if (photoFile) formData.append("profilePhoto", photoFile);
                         if (licenceFile) formData.append("licenseImage", licenceFile);
-                        if (licenceNum) formData.append("drivingLicenceNumber", licenceNum);
-
-                        const token = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token");
-                        const res = await fetch("/api/driver/upload-docs", {
+                        const token = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token") || localStorage.getItem("zipride_jwt_token");
+                        const res = await apiFetch("/api/v1/driver/upload-docs", {
                           method: "POST",
                           headers: token ? { Authorization: `Bearer ${token}` } : {},
                           body: formData,
