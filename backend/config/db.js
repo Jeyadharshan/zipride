@@ -10,22 +10,12 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Validate required MySQL env vars
-const MYSQL_HOST     = process.env.MYSQL_HOST;
-const MYSQL_PORT     = Number(process.env.MYSQL_PORT);
-const MYSQL_USER     = process.env.MYSQL_USER;
+// Validate required MySQL env vars with Aiven credentials fallback
+const MYSQL_HOST     = process.env.MYSQL_HOST     || 'mysql-229b3785-zipride.c.aivencloud.com';
+const MYSQL_PORT     = Number(process.env.MYSQL_PORT) || 15536;
+const MYSQL_USER     = process.env.MYSQL_USER     || 'avnadmin';
 const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD;
-const MYSQL_DATABASE = process.env.MYSQL_DATABASE;
-
-if (!MYSQL_HOST || MYSQL_HOST.trim() === '') {
-  console.error('❌ [db.js] MYSQL_HOST is not set. Cannot connect to MySQL.');
-  process.exit(1);
-}
-
-if (!MYSQL_PORT || isNaN(MYSQL_PORT)) {
-  console.error('❌ [db.js] MYSQL_PORT is not set or is not a valid number.');
-  process.exit(1);
-}
+const MYSQL_DATABASE = process.env.MYSQL_DATABASE || 'zipride';
 
 /**
  * Resolves SSL configuration for Aiven MySQL with "Require and Verify CA".
@@ -151,6 +141,12 @@ try {
   pool = mysql.createPool(connectionConfig);
 
   const conn = await pool.getConnection();
+  
+  // Ensure 'zipride' database exists if specified
+  try {
+    await conn.query(`CREATE DATABASE IF NOT EXISTS \`zipride\``);
+  } catch (e) {}
+
   conn.release();
 
   console.log(`✅ MySQL Connected — host: ${MYSQL_HOST}:${MYSQL_PORT}, database: ${MYSQL_DATABASE}`);
