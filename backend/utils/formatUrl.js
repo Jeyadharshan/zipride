@@ -6,7 +6,7 @@ export function formatAssetUrl(urlOrPath) {
     return null;
   }
   const clean = urlOrPath.trim();
-  if (clean.startsWith('http://') || clean.startsWith('https://')) {
+  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) {
     return clean;
   }
 

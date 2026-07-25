@@ -352,7 +352,7 @@ export const AdminController = {
           await NotificationService.sendPushNotification(
             dp.profile_id,
             'Driver Verification Rejected',
-            `Your driver verification was rejected: ${rejectionReasonVal}`
+            `Your document verification has been rejected. Please review the reason and upload the required documents again. Reason: ${rejectionReasonVal}`
           ).catch(() => {});
         } catch (e) {}
 

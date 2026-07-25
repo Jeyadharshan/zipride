@@ -92,6 +92,29 @@ class DocumentService {
         }
     }
 
+    async updateDriverDocuments(profileId, { profilePhoto, drivingLicense, licenseNumber, status = 'pending' }) {
+        try {
+            const collection = await DocumentRepository.getCollection();
+            const updateFields = {
+                verificationStatus: status,
+                rejectedReason: null,
+                updatedAt: new Date()
+            };
+            if (profilePhoto) updateFields.profilePhoto = profilePhoto;
+            if (drivingLicense) updateFields.drivingLicense = drivingLicense;
+            if (licenseNumber) updateFields.licenseNumber = licenseNumber;
+
+            await collection.updateOne(
+                { profileId },
+                { $set: updateFields },
+                { upsert: true }
+            );
+            Logger.info(`Updated driver documents for profile: ${profileId}`);
+        } catch (error) {
+            Logger.error(`Failed to update driver documents: ${error.message}`);
+        }
+    }
+
     async getAllPendingDocuments() {
         try {
             const collection = await DocumentRepository.getCollection();

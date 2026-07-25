@@ -86,9 +86,12 @@ export const DriverController = {
   async uploadDocuments(req, res, next) {
     try {
       const profileId = req.user.id;
-      const profilePhotoUrl = req.files?.profilePhoto?.[0]?.cloudinaryUrl || req.body.profilePhotoUrl;
-      const licenseImageUrl = req.files?.licenseImage?.[0]?.cloudinaryUrl || req.body.licenseImageUrl;
+      const rawProfilePhoto = req.files?.profilePhoto?.[0]?.cloudinaryUrl || req.body.profilePhotoUrl || req.body.profilePhoto;
+      const rawLicenseImage = req.files?.licenseImage?.[0]?.cloudinaryUrl || req.body.licenseImageUrl || req.body.licenseImage;
       const drivingLicenceNumber = req.body.drivingLicenceNumber || req.body.licenseNumber;
+
+      const profilePhotoUrl = formatAssetUrl(rawProfilePhoto);
+      const licenseImageUrl = formatAssetUrl(rawLicenseImage);
 
       const fieldsToUpdate = [];
       const values = [];
@@ -108,7 +111,7 @@ export const DriverController = {
         values.push(drivingLicenceNumber, drivingLicenceNumber);
       }
 
-      // Reset verification status to Pending when new documents are uploaded
+      // Reset verification status to Pending and clear rejection_reason
       fieldsToUpdate.push("verification_status = 'Pending'", "rejection_reason = NULL", "updated_at = NOW()");
 
       if (fieldsToUpdate.length > 0) {
@@ -119,9 +122,40 @@ export const DriverController = {
         );
       }
 
+      // Sync MongoDB document record
+      try {
+        const { default: DocumentService } = await import('../services/documentService.js');
+        await DocumentService.updateDriverDocuments(profileId, {
+          profilePhoto: profilePhotoUrl,
+          drivingLicense: licenseImageUrl,
+          licenseNumber: drivingLicenceNumber,
+          status: 'pending'
+        });
+      } catch (err) {
+        console.warn('[driverController] Failed to sync MongoDB documents on upload:', err.message);
+      }
+
+      // Notify Admin of document resubmission
+      try {
+        const { NotificationService } = await import('../services/notificationService.js');
+        await NotificationService.sendPushNotification(
+          'admin',
+          'New Driver Documents Submitted',
+          `Driver ${req.user.full_name || profileId} has resubmitted verification documents.`
+        ).catch(() => {});
+      } catch (err) {}
+
       return res.json({
         success: true,
-        message: 'Documents uploaded and resubmitted for admin verification successfully.'
+        message: 'Documents uploaded and resubmitted for admin verification successfully.',
+        data: {
+          verification_status: 'Pending',
+          profile_photo: profilePhotoUrl,
+          profile_photo_url: profilePhotoUrl,
+          driving_licence_image: licenseImageUrl,
+          license_image_url: licenseImageUrl,
+          driving_licence_number: drivingLicenceNumber
+        }
       });
     } catch (err) {
       next(err);

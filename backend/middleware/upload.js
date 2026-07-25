@@ -110,15 +110,21 @@ export const processUploadedFiles = async (req, res, next) => {
         file.cloudinaryUrl = uploadResult.secure_url;
         success = true;
       } catch (err) {
-        console.warn('[Upload Middleware] Cloudinary upload failed, falling back to local disk:', err.message);
+        console.warn('[Upload Middleware] Cloudinary upload failed:', err.message);
       }
     }
 
     if (!success && file.buffer) {
-      const localFilePath = path.join(uploadsBaseDir, safeName);
-      fs.writeFileSync(localFilePath, file.buffer);
-      file.cloudinaryUrl = `/uploads/${safeName}`;
-      console.log(`[Upload Middleware] Saved uploaded file to disk: ${localFilePath} -> /uploads/${safeName}`);
+      // Also write to local disk for local dev fast access
+      try {
+        const localFilePath = path.join(uploadsBaseDir, safeName);
+        fs.writeFileSync(localFilePath, file.buffer);
+      } catch (e) {}
+
+      // Store persistent Data URI so image URL in DB never disappears on Render restarts
+      const base64Data = file.buffer.toString('base64');
+      file.cloudinaryUrl = `data:${file.mimetype};base64,${base64Data}`;
+      console.log(`[Upload Middleware] Converted uploaded file to permanent Data URI (${(file.size / 1024).toFixed(1)} KB)`);
     }
   }
 

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { TrendingUp, Car, Star, Clock, Power, ArrowRight, Zap } from "lucide-react";
+import { TrendingUp, Car, Star, Clock, Power, ArrowRight, Zap, X, FileText, Upload, ShieldAlert } from "lucide-react";
 import { DriverShell } from "@/driver/layouts/DriverShell";
 import { StatCard, PageHeader, Pill, Avatar } from "@/shared/components/kit/Primitives";
 import { Reveal } from "@/shared/components/kit/Reveal";
@@ -9,12 +9,12 @@ import { useAuth } from "@/auth/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { resolveAssetUrl } from "@/shared/utils/resolveAssetUrl";
 
-
-
 export function DriverDashboard() {
   const navigate = useNavigate();
-  const { profile, driverProfile } = useAuth();
+  const { profile, driverProfile, refreshProfile } = useAuth();
   const [online, setOnline] = useState(false);
+  const [showResubmitModal, setShowResubmitModal] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
   // Sync online status from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
     const stored = localStorage.getItem("driver_online_status");
@@ -312,25 +312,33 @@ export function DriverDashboard() {
           isRejected ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
         )}>
           <div className="flex items-start gap-3">
-            <Clock className="h-6 w-6 shrink-0 mt-0.5" />
+            {isRejected ? <ShieldAlert className="h-6 w-6 shrink-0 mt-0.5" /> : <Clock className="h-6 w-6 shrink-0 mt-0.5" />}
             <div>
               <p className="font-bold text-base">
-                {isRejected ? "Verification Rejected" : "Waiting for Admin Verification"}
+                {isRejected ? "Document Verification Rejected" : "Waiting for Admin Verification"}
               </p>
               <p className="mt-1 text-xs opacity-90">
                 {isRejected
-                  ? `Reason: ${driverProfile?.rejection_reason || "Your document verification was rejected."}. Please upload new documents to resubmit.`
+                  ? `Your document verification has been rejected. Reason: "${driverProfile?.rejection_reason || "Your document verification was rejected."}". Please review the reason and upload the required documents again.`
                   : "Your profile photo and driving licence are currently under review by our admin team. You cannot go online or accept ride requests until verified."
                 }
               </p>
             </div>
           </div>
-          <Link
-            to="/driver/verification"
-            className="shrink-0 rounded-xl gradient-brand px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow hover:scale-105 transition-transform"
-          >
-            {isRejected ? "Resubmit Documents" : "View Status"}
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowResubmitModal(true)}
+              className="rounded-xl gradient-brand px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow hover:scale-105 transition-transform"
+            >
+              {isRejected ? "Re-submit Documents" : "Upload Documents"}
+            </button>
+            <Link
+              to="/driver/verification"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary transition-colors"
+            >
+              View Status
+            </Link>
+          </div>
         </div>
       )}
 
@@ -468,6 +476,143 @@ export function DriverDashboard() {
           </Reveal>
         )}
       </div>
+
+      {/* Re-submit Documents Modal */}
+      {showResubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="relative w-full max-w-lg rounded-3xl border border-border bg-card p-6 shadow-elevated">
+            <button
+              onClick={() => setShowResubmitModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-secondary text-muted-foreground transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+                <Upload className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold text-foreground">Re-submit Documents</h3>
+                <p className="text-xs text-muted-foreground">Upload new files and update license number for admin verification</p>
+              </div>
+            </div>
+
+            {isRejected && (
+              <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                <span className="font-bold">Rejection Reason:</span> {driverProfile?.rejection_reason || "Document verification rejected."}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setResubmitting(true);
+                try {
+                  const photoEl = document.getElementById("dashResubmitPhoto") as HTMLInputElement;
+                  const licenceEl = document.getElementById("dashResubmitLicence") as HTMLInputElement;
+                  const numEl = document.getElementById("dashResubmitNum") as HTMLInputElement;
+
+                  const photoFile = photoEl?.files?.[0];
+                  const licenceFile = licenceEl?.files?.[0];
+                  const licenceNum = numEl?.value;
+
+                  if (photoFile) {
+                    const minB = 10 * 1024; // 10 KB
+                    const maxB = 2 * 1024 * 1024; // 2 MB
+                    if (photoFile.size < minB || photoFile.size > maxB) {
+                      alert(`Profile photo must be up to 2 MB. Size: ${(photoFile.size / (1024 * 1024)).toFixed(2)} MB`);
+                      setResubmitting(false);
+                      return;
+                    }
+                  }
+
+                  const formData = new FormData();
+                  if (photoFile) formData.append("profilePhoto", photoFile);
+                  if (licenceFile) formData.append("licenseImage", licenceFile);
+                  if (licenceNum) formData.append("drivingLicenceNumber", licenceNum);
+
+                  const token = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token");
+                  const res = await fetch("/api/driver/upload-docs", {
+                    method: "POST",
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    body: formData,
+                  });
+
+                  const json = await res.json();
+                  if (res.ok) {
+                    alert("Documents resubmitted successfully! Status updated to Pending.");
+                    setShowResubmitModal(false);
+                    if (refreshProfile) await refreshProfile();
+                    window.location.reload();
+                  } else {
+                    alert("Resubmission failed: " + (json.message || "Unknown error"));
+                  }
+                } catch (err: any) {
+                  alert("Failed to resubmit documents: " + err.message);
+                } finally {
+                  setResubmitting(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  Driving Licence Number
+                </label>
+                <input
+                  id="dashResubmitNum"
+                  type="text"
+                  placeholder="Enter driving licence number"
+                  defaultValue={driverProfile?.license_number || driverProfile?.driving_licence_number || ""}
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  New Profile Photo (Up to 2 MB, JPG/PNG/WEBP)
+                </label>
+                <input
+                  id="dashResubmitPhoto"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  className="w-full text-xs text-muted-foreground file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  New Driving Licence Document (JPG/PNG/WEBP/PDF)
+                </label>
+                <input
+                  id="dashResubmitLicence"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                  className="w-full text-xs text-muted-foreground file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowResubmitModal(false)}
+                  className="flex-1 rounded-xl border border-border py-2.5 text-sm font-semibold hover:bg-secondary transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resubmitting}
+                  className="flex-1 rounded-xl gradient-brand py-2.5 text-sm font-bold text-primary-foreground shadow-glow hover:scale-[1.01] transition-transform disabled:opacity-50"
+                >
+                  {resubmitting ? "Resubmitting..." : "Submit Documents"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </DriverShell>
   );
 }
