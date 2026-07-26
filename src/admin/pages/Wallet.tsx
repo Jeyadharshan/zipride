@@ -23,8 +23,11 @@ export function AdminWalletPage() {
       if (dateTo) queryParams.set("dateTo", dateTo);
 
       const res = await apiFetch(`/api/v1/admin/wallet?${queryParams.toString()}`);
-      if (res && res.success && res.data) {
-        setStats(res.data);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.data) {
+          setStats(data.data);
+        }
       }
     } catch (err) {
       console.error("Failed to load admin wallet stats:", err);

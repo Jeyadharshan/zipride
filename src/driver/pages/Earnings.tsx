@@ -16,8 +16,11 @@ export function Earnings() {
       setLoading(true);
       try {
         const res = await apiFetch("/api/v1/driver/wallet");
-        if (res && res.success && res.data) {
-          setDriverWallet(res.data);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.data) {
+            setDriverWallet(data.data);
+          }
         }
       } catch (err) {
         console.error("Failed to load driver wallet details:", err);

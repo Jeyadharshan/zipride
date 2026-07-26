@@ -15,9 +15,12 @@ export function NotificationCenter() {
     if (!token) return;
     try {
       const res = await apiFetch("/api/v1/notifications");
-      if (res && res.success && Array.isArray(res.data)) {
-        setNotifications(res.data);
-        setUnreadCount(res.unreadCount ?? res.data.filter((n: any) => !n.is_read).length);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.data)) {
+          setNotifications(data.data);
+          setUnreadCount(data.unreadCount ?? data.data.filter((n: any) => !n.is_read).length);
+        }
       }
     } catch (err) {}
   };

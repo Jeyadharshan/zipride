@@ -21,7 +21,7 @@ export const API_BASE: string =
  * to any path that starts with `/api` or `/uploads`, with automatic retry
  * on transient network errors (such as ERR_NETWORK_CHANGED).
  */
-export async function apiFetch(input: string, init?: RequestInit, retries = 2): Promise<any> {
+export async function apiFetch(input: string, init?: RequestInit, retries = 2): Promise<Response> {
   const url =
     input.startsWith('http://') || input.startsWith('https://')
       ? input
@@ -53,19 +53,6 @@ export async function apiFetch(input: string, init?: RequestInit, retries = 2): 
   while (attempt <= retries) {
     try {
       const response = await fetch(url, options);
-      
-      // If response is JSON, return parsed object for convenience when callers expect data
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const json = await response.json();
-        // Attach raw ok status so caller can check response.ok or res.success
-        if (typeof json === 'object' && json !== null) {
-          json.ok = response.ok;
-          json.status = response.status;
-        }
-        return json;
-      }
-
       return response;
     } catch (err: any) {
       attempt++;

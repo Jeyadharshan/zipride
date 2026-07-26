@@ -20,13 +20,19 @@ export function WalletPage() {
   const fetchWalletData = async () => {
     try {
       const summaryRes = await apiFetch("/api/v1/wallet");
-      if (summaryRes?.success && summaryRes?.data) {
-        setSummary(summaryRes.data);
+      if (summaryRes.ok) {
+        const summaryData = await summaryRes.json();
+        if (summaryData?.success && summaryData?.data) {
+          setSummary(summaryData.data);
+        }
       }
 
       const historyRes = await apiFetch("/api/v1/wallet/history");
-      if (historyRes?.success && Array.isArray(historyRes?.data)) {
-        setTransactions(historyRes.data);
+      if (historyRes.ok) {
+        const historyData = await historyRes.json();
+        if (historyData?.success && Array.isArray(historyData?.data)) {
+          setTransactions(historyData.data);
+        }
       }
     } catch (e) {
       console.warn("Failed to load wallet data:", e);
@@ -49,12 +55,13 @@ export function WalletPage() {
         method: "POST",
         body: JSON.stringify({ amount: finalAmt })
       });
+      const data = await res.json();
 
-      if (!res || !res.razorpay_order_id) {
-        throw new Error(res?.message || "Failed to create Razorpay order");
+      if (!data || !data.razorpay_order_id) {
+        throw new Error(data?.message || "Failed to create Razorpay order");
       }
 
-      const { razorpay_order_id, amount: orderAmt, currency, key_id } = res;
+      const { razorpay_order_id, amount: orderAmt, currency, key_id } = data;
 
       // Load Razorpay Script dynamically
       if (!(window as any).Razorpay) {

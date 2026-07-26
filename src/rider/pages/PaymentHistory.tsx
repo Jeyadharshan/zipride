@@ -16,8 +16,11 @@ export function PaymentHistoryPage() {
       setLoading(true);
       try {
         const res = await apiFetch("/api/v1/payments");
-        if (res && res.success && Array.isArray(res.data)) {
-          setPayments(res.data);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.data)) {
+            setPayments(data.data);
+          }
         }
       } catch (err) {
         console.error("Failed to load payment history:", err);

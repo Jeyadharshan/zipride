@@ -53,8 +53,11 @@ export function Payment() {
   const fetchWallet = async () => {
     try {
       const res = await apiFetch("/api/v1/wallet");
-      if (res && res.success && res.data) {
-        setWalletBalance(Number(res.data.available_balance ?? res.data.balance ?? 0));
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.data) {
+          setWalletBalance(Number(data.data.available_balance ?? data.data.balance ?? 0));
+        }
       }
     } catch (e) {}
   };
@@ -95,9 +98,10 @@ export function Payment() {
         method: "POST",
         body: JSON.stringify({ amount: topupAmount })
       });
-      if (!res || !res.razorpay_order_id) throw new Error("Could not create Razorpay order.");
+      const data = await res.json();
+      if (!data || !data.razorpay_order_id) throw new Error("Could not create Razorpay order.");
 
-      const { razorpay_order_id, amount: orderAmt, currency, key_id } = res;
+      const { razorpay_order_id, amount: orderAmt, currency, key_id } = data;
 
       if (!(window as any).Razorpay) {
         const script = document.createElement("script");
@@ -124,7 +128,8 @@ export function Payment() {
               amount: orderAmt
             })
           });
-          if (verifyRes && verifyRes.success) {
+          const verifyData = await verifyRes.json();
+          if (verifyData && verifyData.success) {
             alert(`✅ ₹${orderAmt} added to Wallet!`);
             setInsufficientModal(false);
             fetchWallet();
@@ -152,11 +157,12 @@ export function Payment() {
             amount: actualFare
           })
         });
+        const resData = await res.json();
 
-        if (res && res.success) {
+        if (resData && resData.success) {
           setPaid(true);
           setTimeout(() => navigate({ to: "/rating", replace: true }), 1400);
-        } else if (res?.error === "INSUFFICIENT_WALLET_BALANCE") {
+        } else if (resData?.error === "INSUFFICIENT_WALLET_BALANCE") {
           setInsufficientModal(true);
         } else {
           alert("Wallet payment failed: " + (res?.message || "Error"));

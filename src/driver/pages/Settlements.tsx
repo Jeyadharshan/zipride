@@ -17,8 +17,11 @@ export function DriverSettlementPage() {
     setLoading(true);
     try {
       const res = await apiFetch("/api/v1/driver/settlement");
-      if (res && res.success && res.data) {
-        setSummary(res.data);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.data) {
+          setSummary(data.data);
+        }
       }
     } catch (err) {
       console.error("Failed to load driver settlement summary:", err);
@@ -51,13 +54,14 @@ export function DriverSettlementPage() {
           bankDetails
         })
       });
-      if (res && res.success) {
+      const data = await res.json();
+      if (data && data.success) {
         alert("✅ Settlement request submitted successfully!");
         setModalOpen(false);
         setAmount("");
         fetchSettlementSummary();
       } else {
-        alert("Error: " + (res?.message || "Could not submit request."));
+        alert("Error: " + (data?.message || "Could not submit request."));
       }
     } catch (err: any) {
       alert("Failed: " + err.message);

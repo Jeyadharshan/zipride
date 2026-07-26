@@ -20,8 +20,11 @@ export function AdminSettlementsPage() {
       if (statusFilter) q.set("status", statusFilter);
 
       const res = await apiFetch(`/api/v1/admin/settlements?${q.toString()}`);
-      if (res && res.success && Array.isArray(res.data)) {
-        setSettlements(res.data);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.data)) {
+          setSettlements(data.data);
+        }
       }
     } catch (err) {
       console.error("Failed to load admin settlements:", err);
@@ -44,7 +47,8 @@ export function AdminSettlementsPage() {
     setProcessingId(id);
     try {
       const res = await apiFetch(`/api/v1/admin/settlement/${id}/approve`, { method: "POST" });
-      if (res && res.success) {
+      const data = await res.json();
+      if (data && data.success) {
         alert("✅ Settlement Approved & Driver Notified!");
         fetchSettlements();
       }
