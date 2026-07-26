@@ -46,7 +46,10 @@ router.get('/', requireAuth, async (req, res, next) => {
   }
 });
 
+import { WebhookController } from '../controllers/webhookController.js';
+
 router.get('/receipt/:rideId', requireAuth, PaymentController.getReceipt);
 router.get('/:rideId/receipt', requireAuth, PaymentController.getReceipt);
+router.post('/webhook', WebhookController.handleRazorpayWebhook);
 
 export default router;

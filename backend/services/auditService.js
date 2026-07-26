@@ -1,82 +1,71 @@
 // backend/services/auditService.js
-// Production audit logging — captures every significant system action
+// Production MongoDB Atlas & MySQL Dual Audit Logging System
 
 import db from '../config/db.js';
+import { getMongoDB, connectMongoDB } from '../config/mongodb.js';
 
 export const AuditService = {
-  /**
-   * Log any action to the audit_logs table.
-   * @param {object} opts
-   * @param {string}  opts.profileId   - UUID of the user performing the action
-   * @param {string}  opts.action      - Action identifier (e.g. 'RIDE_ACCEPTED', 'DRIVER_APPROVED')
-   * @param {string}  [opts.tableName] - Affected table name
-   * @param {string}  [opts.recordId]  - Affected record ID
-   * @param {string}  [opts.ipAddress] - Requester's IP address
-   * @param {string}  [opts.userAgent] - Browser / User-Agent string
-   * @param {string}  [opts.notes]     - Additional notes
-   */
-  async logAction({ profileId, action, tableName = null, recordId = null, ipAddress = null, userAgent = null, notes = null }) {
+  async log({ action, performed_by = 'SYSTEM', details = {}, profileId = null }) {
+    const auditObj = {
+      action,
+      performed_by,
+      details,
+      profileId,
+      timestamp: new Date()
+    };
+
+    // 1. Write to MongoDB Atlas audit_logs collection
     try {
-      let validProfileId = null;
-      if (profileId && typeof profileId === 'string' && profileId.length === 36 && profileId !== 'admin') {
-        const [[p]] = await db.execute('SELECT id FROM profiles WHERE id = ?', [profileId]);
-        if (p?.id) validProfileId = p.id;
+      let mdb = getMongoDB();
+      if (!mdb) mdb = await connectMongoDB();
+      if (mdb) {
+        await mdb.collection('audit_logs').insertOne(auditObj);
       }
+    } catch (e) {}
+
+    // 2. Write to MySQL audit_logs table
+    try {
       await db.execute(
-        `INSERT INTO audit_logs (profile_id, action, table_name, record_id, created_at) VALUES (?, ?, ?, ?, NOW())`,
-        [validProfileId, action, tableName, recordId]
-      );
-    } catch (err) {
-      // Audit must NEVER crash the calling code
-      console.error('[Audit Service] Failed to write log:', err.message);
-    }
+        `INSERT INTO audit_logs (profile_id, action, table_name, created_at) VALUES (?, ?, ?, NOW())`,
+        [profileId, action, JSON.stringify(details).substring(0, 250)]
+      ).catch(() => {});
+    } catch (e) {}
   },
 
-  // Convenience alias used by some legacy controller code
-  async logAdminAction({ adminId, action, affectedId, affectedTable, ipAddress, userAgent }) {
-    return AuditService.logAction({
-      profileId: adminId,
-      action,
-      tableName: affectedTable,
-      recordId: affectedId,
-      ipAddress,
-      userAgent,
+  async logAction(opts) {
+    return this.log({
+      action: opts.action,
+      performed_by: opts.profileId || 'SYSTEM',
+      profileId: opts.profileId,
+      details: { tableName: opts.tableName, recordId: opts.recordId, notes: opts.notes }
     });
   },
 
-  async getRecentLogs({ limit = 50, offset = 0, profileId = null, action = null } = {}) {
-    let sql = `
-      SELECT al.*, p.full_name, p.role
-      FROM audit_logs al
-      LEFT JOIN profiles p ON al.profile_id = p.id
-      WHERE 1=1
-    `;
-    const params = [];
+  async getRecentLogs({ limit = 50, offset = 0, action = null } = {}) {
+    // MongoDB first
+    try {
+      let mdb = getMongoDB();
+      if (!mdb) mdb = await connectMongoDB();
+      if (mdb) {
+        const query = action ? { action: new RegExp(action, 'i') } : {};
+        const logs = await mdb.collection('audit_logs')
+          .find(query)
+          .sort({ timestamp: -1 })
+          .limit(limit)
+          .toArray();
+        if (logs.length > 0) return logs;
+      }
+    } catch (e) {}
 
-    if (profileId) {
-      sql += ` AND al.profile_id = ?`;
-      params.push(profileId);
+    // MySQL fallback
+    try {
+      let sql = `SELECT al.*, p.full_name, p.role FROM audit_logs al LEFT JOIN profiles p ON al.profile_id = p.id ORDER BY al.created_at DESC LIMIT ? OFFSET ?`;
+      const [rows] = await db.query(sql, [Number(limit), Number(offset)]);
+      return rows;
+    } catch (e) {
+      return [];
     }
-    if (action) {
-      sql += ` AND al.action LIKE ?`;
-      params.push(`%${action}%`);
-    }
-
-    sql += ` ORDER BY al.created_at DESC LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
-
-    const [rows] = await db.execute(sql, params);
-    return rows;
-  },
-
-  async countLogs(profileId = null, action = null) {
-    let sql = `SELECT COUNT(*) AS total FROM audit_logs WHERE 1=1`;
-    const params = [];
-    if (profileId) { sql += ` AND profile_id = ?`; params.push(profileId); }
-    if (action)    { sql += ` AND action LIKE ?`;  params.push(`%${action}%`); }
-    const [[row]] = await db.execute(sql, params);
-    return row.total;
-  },
+  }
 };
 
 export default AuditService;

@@ -727,6 +727,67 @@ export const AdminController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async markSettlementPaid(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const result = await SettlementService.markPaid(
+        req.params.id,
+        req.body.txnReference || req.body.transactionReference || '',
+        req.body.notes || 'Marked Paid by Admin'
+      );
+      return sendSuccess(res, 'Settlement marked as Paid.', result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async getMySQLBackup(req, res, next) {
+    try {
+      const { BackupService } = await import('../services/backupService.js');
+      const backup = await BackupService.getMySQLBackup();
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=zipride_mysql_backup_${Date.now()}.json`);
+      return res.json(backup);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async getMongoBackup(req, res, next) {
+    try {
+      const { BackupService } = await import('../services/backupService.js');
+      const backup = await BackupService.getMongoBackup();
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=zipride_mongo_backup_${Date.now()}.json`);
+      return res.json(backup);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async restoreBackup(req, res, next) {
+    try {
+      const { BackupService } = await import('../services/backupService.js');
+      const result = await BackupService.restoreBackup(req.body);
+      return sendSuccess(res, 'Backup restore status.', result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async exportData(req, res, next) {
+    try {
+      const { BackupService } = await import('../services/backupService.js');
+      const { type = 'csv', category = 'rides' } = req.query;
+      const result = await BackupService.exportData(type, category);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=${result.filename}`);
+      return res.send(result.content);
+    } catch (err) {
+      next(err);
+    }
   }
 };
 

@@ -77,6 +77,25 @@ export function AdminSettlementsPage() {
     } finally {
       setProcessingId(null);
     }
+  const handleMarkPaid = async (id: number) => {
+    const txnRef = prompt(`Enter Transaction Reference / Bank UTR for settlement #${id}:`);
+    if (txnRef === null) return;
+    setProcessingId(id);
+    try {
+      const res = await apiFetch(`/api/v1/admin/settlement/${id}/mark-paid`, {
+        method: "POST",
+        body: JSON.stringify({ txnReference: txnRef, notes: "Marked Paid via Bank Transfer" })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        alert("✅ Settlement Marked as Paid & Driver Notified!");
+        fetchSettlements();
+      }
+    } catch (e: any) {
+      alert("Mark Paid error: " + e.message);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const handleExportCsv = () => {
@@ -219,25 +238,36 @@ export function AdminSettlementsPage() {
                       {s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}
                     </td>
                     <td className="py-3 px-3 text-right">
-                      {s.status === "Pending" ? (
+                      {s.status === "Pending" || s.status === "Approved" ? (
                         <div className="flex items-center justify-end gap-1.5">
+                          {s.status === "Pending" && (
+                            <button
+                              onClick={() => handleApprove(s.id)}
+                              disabled={processingId === s.id}
+                              className="rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 px-2.5 py-1 font-bold text-xs cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleApprove(s.id)}
+                            onClick={() => handleMarkPaid(s.id)}
                             disabled={processingId === s.id}
-                            className="rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 px-2.5 py-1 font-bold text-xs cursor-pointer"
+                            className="rounded-lg bg-primary/10 text-primary hover:bg-primary/20 px-2.5 py-1 font-bold text-xs cursor-pointer"
                           >
-                            Approve
+                            Mark Paid
                           </button>
-                          <button
-                            onClick={() => handleReject(s.id)}
-                            disabled={processingId === s.id}
-                            className="rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 px-2.5 py-1 font-bold text-xs cursor-pointer"
-                          >
-                            Reject
-                          </button>
+                          {s.status === "Pending" && (
+                            <button
+                              onClick={() => handleReject(s.id)}
+                              disabled={processingId === s.id}
+                              className="rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 px-2.5 py-1 font-bold text-xs cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          )}
                         </div>
                       ) : (
-                        <span className="text-[11px] text-muted-foreground italic">Processed</span>
+                        <span className="text-[11px] text-emerald-600 font-bold">✓ Paid</span>
                       )}
                     </td>
                   </tr>

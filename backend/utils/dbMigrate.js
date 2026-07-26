@@ -216,6 +216,11 @@ export async function runDatabaseMigrations() {
       await db.query(`ALTER TABLE driver_profiles MODIFY COLUMN verification_status VARCHAR(100) NOT NULL DEFAULT 'pending'`).catch(() => {});
     } catch (e) {}
 
+    // Ensure status column in driver_settlements is VARCHAR(50) to allow 'Paid'
+    try {
+      await db.query(`ALTER TABLE driver_settlements MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'Pending'`).catch(() => {});
+    } catch (e) {}
+
     // Ensure missing columns exist in wallet_transactions
     try {
       const [wtCols] = await db.query(`SHOW COLUMNS FROM wallet_transactions`);

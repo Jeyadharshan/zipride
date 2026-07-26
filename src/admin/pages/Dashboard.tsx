@@ -12,6 +12,8 @@ import { AdminShell } from "@/admin/layouts/AdminShell";
 import { StatCard, Pill } from "@/shared/components/kit/Primitives";
 import { supabase } from "@/lib/supabase";
 
+import { apiFetch } from "@/lib/api";
+
 export const Route = createFileRoute("/admin/dashboard")({
   component: AdminDashboard,
 });

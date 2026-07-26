@@ -6,6 +6,7 @@ import { requireAdmin } from '../middleware/admin.js';
 const router = express.Router();
 
 router.get('/dashboard-stats', requireAuth, requireAdmin, AdminController.getDashboardStats);
+router.get('/analytics', requireAuth, requireAdmin, AdminController.getAnalytics);
 router.get('/users', requireAuth, requireAdmin, AdminController.getUsers);
 router.get('/rides', requireAuth, requireAdmin, AdminController.getRides);
 router.get('/reports', requireAuth, requireAdmin, AdminController.getReportData);
@@ -26,6 +27,11 @@ router.get('/wallet', requireAuth, requireAdmin, AdminController.getWalletStats)
 router.get('/settlements', requireAuth, requireAdmin, AdminController.getSettlements);
 router.post('/settlement/:id/approve', requireAuth, requireAdmin, AdminController.approveSettlement);
 router.post('/settlement/:id/reject', requireAuth, requireAdmin, AdminController.rejectSettlement);
+router.post('/settlement/:id/mark-paid', requireAuth, requireAdmin, AdminController.markSettlementPaid);
+router.get('/backup/mysql', requireAuth, requireAdmin, AdminController.getMySQLBackup);
+router.get('/backup/mongo', requireAuth, requireAdmin, AdminController.getMongoBackup);
+router.post('/backup/restore', requireAuth, requireAdmin, AdminController.restoreBackup);
+router.get('/export', requireAuth, requireAdmin, AdminController.exportData);
 
 export default router;
 

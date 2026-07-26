@@ -86,6 +86,34 @@ export const SettlementService = {
     return { success: true, settlement: updated };
   },
 
+  async markPaid(settlementId, txnReference = '', notes = 'Marked Paid by Admin') {
+    const updated = await SettlementRepository.updateStatus(settlementId, 'Paid', notes, txnReference);
+    if (updated?.profile_id) {
+      sendToUser(updated.profile_id, 'driver-wallet-updated', {
+        settlementId,
+        status: 'Paid',
+        amount: updated.amount,
+        txnReference
+      });
+      await NotificationService.sendPushNotification(
+        updated.profile_id,
+        'Withdrawal Marked Paid ✓',
+        `Your settlement #${settlementId} for ₹${updated.amount} has been marked as Paid! Ref: ${txnReference || 'Bank Direct'}`
+      );
+
+      // Log in MongoDB audit logs
+      try {
+        const { AuditService } = await import('./auditService.js');
+        AuditService.log({
+          action: 'SETTLEMENT_MARKED_PAID',
+          performed_by: 'ADMIN',
+          details: { settlementId, amount: updated.amount, txnReference, driverProfileId: updated.profile_id }
+        });
+      } catch (_) {}
+    }
+    return { success: true, settlement: updated };
+  },
+
   async rejectSettlement(settlementId, reason = 'Rejected by Admin') {
     const updated = await SettlementRepository.updateStatus(settlementId, 'Rejected', reason);
     if (updated?.profile_id) {

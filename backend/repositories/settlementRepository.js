@@ -44,13 +44,19 @@ export const SettlementRepository = {
     return rows;
   },
 
-  async updateStatus(settlementId, status, notes = '') {
-    const isSettled = status === 'Approved' || status === 'Settled';
-    const settledAt = isSettled ? new Date() : null;
-    await db.execute(
-      `UPDATE driver_settlements SET status = ?, notes = ?, settled_at = ? WHERE id = ?`,
-      [status, notes, settledAt, settlementId]
-    );
+  async updateStatus(settlementId, status, notes = '', txnReference = '') {
+    const isSettled = status === 'Approved' || status === 'Settled' || status === 'Paid';
+    if (isSettled) {
+      await db.execute(
+        `UPDATE driver_settlements SET status = ?, notes = ?, settled_at = NOW() WHERE id = ?`,
+        [status, notes, settlementId]
+      );
+    } else {
+      await db.execute(
+        `UPDATE driver_settlements SET status = ?, notes = ?, settled_at = NULL WHERE id = ?`,
+        [status, notes, settlementId]
+      );
+    }
     const [[updated]] = await db.execute(`SELECT * FROM driver_settlements WHERE id = ?`, [settlementId]);
     return updated;
   }
