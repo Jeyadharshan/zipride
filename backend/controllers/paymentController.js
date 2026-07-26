@@ -124,5 +124,20 @@ export const PaymentController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async collectCash(req, res, next) {
+    try {
+      const rideId = req.body.rideId || req.body.ride_id;
+      if (!rideId) {
+        return res.status(400).json({ success: false, message: 'rideId is required.' });
+      }
+
+      const result = await PaymentService.collectCash(rideId);
+      return res.status(200).json(result);
+    } catch (err) {
+      Logger.error('[PaymentController.collectCash Error]:', err.message);
+      return res.status(500).json({ success: false, message: err.message });
+    }
   }
 };

@@ -103,7 +103,9 @@ export function Tracking() {
   const [liveEta, setLiveEta] = useState<number | null>(null);
   const [liveDistanceKm, setLiveDistanceKm] = useState<number | null>(null);
 
-  // Live Socket.IO Tracking Listener
+  const [isPaid, setIsPaid] = useState<boolean>(false);
+
+  // Live Socket.IO Tracking & Payment Listener
   useSocket({
     "driver:location_changed": (data: any) => {
       if (data?.latitude && data?.longitude) {
@@ -115,8 +117,13 @@ export function Tracking() {
     "ride:driver_arrived": () => {
       setRide((prev: any) => ({ ...prev, status: "arriving" }));
     },
+    "payment-success": (data: any) => {
+      if (!data?.rideId || String(data.rideId) === String(ride?.id || localStorage.getItem("active_ride_id"))) {
+        setIsPaid(true);
+      }
+    },
     "ride-completed": () => {
-      navigate({ to: "/completed", replace: true });
+      navigate({ to: isPaid ? "/completed" : "/payment", replace: true });
     }
   });
 
@@ -447,15 +454,38 @@ export function Tracking() {
             </div>
           </div>
 
-          <div className="mt-4 space-y-1.5 rounded-2xl bg-secondary p-4 text-sm">
+          <div className="mt-4 space-y-2 rounded-2xl bg-secondary p-4 text-sm">
+            <Row label="Driver" value={displayName} />
             <Row label="Distance" value={displayDistance} />
             <Row label="Time" value={`~${displayTime}`} />
             <Row label="Fare" value={displayFare} />
-            <Row label="Payment" value={displayPay} />
+            <Row label="Payment Method" value={displayPay} />
+            <div className="flex justify-between items-center pt-2 border-t border-border/50">
+              <span className="text-muted-foreground font-medium">Payment Status</span>
+              <span className={`font-extrabold text-xs px-2.5 py-1 rounded-full ${isPaid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                {isPaid ? "🟢 Payment Completed" : "🟠 Payment Pending"}
+              </span>
+            </div>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <button className={`rounded-2xl bg-destructive py-3.5 font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors ${started ? "col-span-2" : ""}`}>
+            {isPaid ? (
+              <button
+                disabled
+                className="col-span-2 rounded-2xl bg-emerald-500/20 text-emerald-600 py-3.5 font-extrabold text-center flex items-center justify-center gap-2 cursor-not-allowed"
+              >
+                <span>🟢 Payment Completed</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate({ to: "/payment" })}
+                className="col-span-2 rounded-2xl gradient-brand py-3.5 font-extrabold text-primary-foreground shadow-glow hover:scale-[1.01] transition-transform flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>💳 Pay Now ({displayFare})</span>
+              </button>
+            )}
+
+            <button className={`rounded-2xl bg-destructive py-3 font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors ${started ? "col-span-2" : ""}`}>
               🆘 Emergency SOS
             </button>
             {!started && (
@@ -472,7 +502,7 @@ export function Tracking() {
                   alert("Ride cancelled successfully.");
                   navigate({ to: "/dashboard", replace: true });
                 }}
-                className="rounded-2xl gradient-brand py-3.5 font-bold text-primary-foreground shadow-glow hover:scale-[1.01] transition-transform"
+                className="rounded-2xl bg-secondary py-3 font-bold text-foreground hover:bg-secondary/80 transition-colors"
               >
                 Cancel Ride
               </button>

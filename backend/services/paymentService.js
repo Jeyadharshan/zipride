@@ -196,6 +196,71 @@ export const PaymentService = {
       .digest('hex');
 
     return expectedSignature === signature;
+  },
+
+  async collectCash(rideId) {
+    const ride = await RideRepository.findById(rideId);
+    if (!ride) {
+      throw new Error(`Ride ${rideId} not found.`);
+    }
+
+    if (ride.payment_status === 'Paid' || ride.payment_status === 'Success' || ride.payment_status === 'Completed') {
+      return { success: true, alreadyPaid: true, message: 'Ride payment is already completed.' };
+    }
+
+    const amount = Number(ride.final_fare || ride.estimated_fare || ride.fare || 0);
+
+    // 1. Create or update cash payment record
+    await PaymentRepository.createPayment({
+      ride_id: rideId,
+      amount,
+      status: 'Success',
+      payment_method: 'Cash',
+      gateway: 'Cash',
+      transaction_id: `CASH_${Date.now()}`,
+      response_json: { method: 'Cash', collected_at: new Date() }
+    });
+
+    // 2. Update ride payment status
+    await RideRepository.updateStatus(rideId, ride.ride_status || ride.status || 'In Progress', {
+      payment_status: 'Paid',
+      payment_method: 'Cash'
+    });
+
+    // 3. Socket.IO Real-time broadcast
+    const { getIo, sendToUser, broadcastToAdmins } = await import('../socket/socket.js');
+    const io = getIo();
+    const payload = {
+      rideId,
+      amount,
+      paymentMethod: 'Cash',
+      payment_status: 'Paid',
+      paymentStatus: 'Paid',
+      paidAt: new Date().toISOString()
+    };
+
+    if (io) {
+      io.to(`ride_${rideId}`).emit('payment-success', payload);
+      io.emit('payment-success', payload);
+    }
+
+    if (ride.rider_id) {
+      sendToUser(ride.rider_id, 'payment-success', payload);
+      const { NotificationService } = await import('./notificationService.js');
+      await NotificationService.sendPushNotification(
+        ride.rider_id,
+        'Cash Payment Received ✓',
+        `Driver has confirmed cash collection of ₹${amount} for your ride.`
+      ).catch(() => {});
+    }
+
+    broadcastToAdmins('payment-success', payload);
+
+    return {
+      success: true,
+      message: 'Cash payment collected and verified successfully.',
+      data: payload
+    };
   }
 };
 

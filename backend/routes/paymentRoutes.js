@@ -50,6 +50,9 @@ import { WebhookController } from '../controllers/webhookController.js';
 
 router.get('/receipt/:rideId', requireAuth, PaymentController.getReceipt);
 router.get('/:rideId/receipt', requireAuth, PaymentController.getReceipt);
+router.post('/create-order', requireAuth, PaymentController.createPaymentOrder);
+router.post('/verify', requireAuth, PaymentController.verifyPayment);
+router.post('/collect-cash', requireAuth, PaymentController.collectCash);
 router.post('/webhook', WebhookController.handleRazorpayWebhook);
 
 export default router;

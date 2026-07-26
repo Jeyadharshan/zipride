@@ -10,6 +10,8 @@ import { useAuth } from "@/auth/hooks/useAuth";
 import { cn } from "@/shared/utils/cn";
 import { fetchRoute } from "@/map/services/routing";
 import { getSocket } from "@/shared/lib/socket";
+import { useSocket } from "@/shared/hooks/useSocket";
+import { apiFetch } from "@/lib/api";
 
 
 
@@ -32,6 +34,43 @@ export function Active() {
   const [updating, setUpdating] = useState(false);
   const [progress, setProgress] = useState(0.1);
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
+
+  // Payment Status states & socket handler
+  const [paymentStatus, setPaymentStatus] = useState<'Pending' | 'Paid' | 'Failed'>('Pending');
+  const [paymentMethodState, setPaymentMethodState] = useState<string>('Wallet');
+  const [paidAt, setPaidAt] = useState<string>('');
+  const [collectingCash, setCollectingCash] = useState<boolean>(false);
+
+  useSocket({
+    "payment-success": (data: any) => {
+      setPaymentStatus("Paid");
+      if (data?.paymentMethod) setPaymentMethodState(data.paymentMethod);
+      if (data?.paidAt) setPaidAt(new Date(data.paidAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      else setPaidAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }
+  });
+
+  const handleCollectCash = async () => {
+    const rideId = localStorage.getItem("driver_active_ride_id") || rawRide?.id;
+    if (!rideId) return;
+    setCollectingCash(true);
+    try {
+      const res = await apiFetch("/api/v1/payments/collect-cash", {
+        method: "POST",
+        body: JSON.stringify({ rideId })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        setPaymentStatus("Paid");
+        setPaidAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        alert("✅ Cash payment collected and verified!");
+      }
+    } catch (e: any) {
+      alert("Cash collection error: " + e.message);
+    } finally {
+      setCollectingCash(false);
+    }
+  };
 
   // Chat states & handlers
   const [showChat, setShowChat] = useState(false);
@@ -545,6 +584,43 @@ export function Active() {
                   </span>
                 </div>
               </div>
+              {/* Live Payment Status Card */}
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-soft space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Payment Status</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-extrabold ${paymentStatus === 'Paid' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                    {paymentStatus === 'Paid'
+                      ? "🟢 Rider Already Paid"
+                      : (rideDetails.paymentMethod?.toLowerCase() === 'cash' ? "🟠 Cash Payment Pending" : "🟠 Waiting for Rider Payment")}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 py-2 text-center bg-secondary/40 rounded-xl p-3">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-semibold">Amount</p>
+                    <p className="font-extrabold text-sm text-foreground">₹{rideDetails.fare}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-semibold">Method</p>
+                    <p className="font-bold text-xs text-foreground uppercase">{paymentMethodState || rideDetails.paymentMethod}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-semibold">Paid At</p>
+                    <p className="font-bold text-xs text-foreground">{paidAt || "--"}</p>
+                  </div>
+                </div>
+
+                {paymentStatus !== 'Paid' && (rideDetails.paymentMethod?.toLowerCase() === 'cash' || paymentMethodState.toLowerCase() === 'cash') && (
+                  <button
+                    onClick={handleCollectCash}
+                    disabled={collectingCash}
+                    className="w-full rounded-xl gradient-brand py-3 font-extrabold text-xs text-primary-foreground shadow-glow hover:scale-[1.01] transition-transform cursor-pointer"
+                  >
+                    {collectingCash ? "Collecting..." : "💵 Cash Collected"}
+                  </button>
+                )}
+              </div>
+
               <button
                 onClick={() => {
                   if (typeof window !== "undefined" && navigator.geolocation) {
@@ -566,10 +642,16 @@ export function Active() {
                 <Navigation className="h-5 w-5 text-primary" /> Navigate to Destination
               </button>
               <button
-                onClick={() => setShowPayment(true)}
-                className="w-full rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow"
+                onClick={() => {
+                  if (paymentStatus === "Paid") {
+                    setShowRating(true);
+                  } else {
+                    setShowPayment(true);
+                  }
+                }}
+                className="w-full rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow cursor-pointer"
               >
-                Arrived at Destination
+                {paymentStatus === "Paid" ? "Ride Completed (Rating Passenger) ✓" : "Arrived at Destination"}
               </button>
             </>
           )}
