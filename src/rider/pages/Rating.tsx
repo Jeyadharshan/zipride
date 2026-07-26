@@ -55,8 +55,9 @@ export function Rating() {
               payment_method: "Razorpay"
             })
           });
+          const tipData = await tipRes.json();
 
-          if (tipRes && tipRes.action === "checkout" && tipRes.razorpay_order_id) {
+          if (tipData && tipData.action === "checkout" && tipData.razorpay_order_id) {
             // Load Razorpay Script if needed
             if (!(window as any).Razorpay) {
               const script = document.createElement("script");
@@ -67,12 +68,12 @@ export function Rating() {
             }
 
             const options = {
-              key: tipRes.key_id || "rzp_live_THQ2isXoSiOoDg",
+              key: tipData.key_id || "rzp_live_THQ2isXoSiOoDg",
               amount: Math.round(finalTipAmount * 100),
               currency: "INR",
               name: "ZipRide Driver Tip",
               description: `Tip for Driver ${driverName}`,
-              order_id: tipRes.razorpay_order_id,
+              order_id: tipData.razorpay_order_id,
               handler: async function (response: any) {
                 await apiFetch("/api/v1/tips", {
                   method: "POST",
@@ -100,11 +101,12 @@ export function Rating() {
               payment_method: "Wallet"
             })
           });
-          if (!tipRes || !tipRes.success) {
-            if (tipRes?.error === "INSUFFICIENT_WALLET_BALANCE") {
+          const tipData = await tipRes.json();
+          if (!tipData || !tipData.success) {
+            if (tipData?.error === "INSUFFICIENT_WALLET_BALANCE") {
               alert(`Insufficient Wallet balance to send ₹${finalTipAmount} tip. Please recharge wallet.`);
             } else {
-              alert("Could not process tip: " + (tipRes?.message || "Error"));
+              alert("Could not process tip: " + (tipData?.message || "Error"));
             }
           }
         }

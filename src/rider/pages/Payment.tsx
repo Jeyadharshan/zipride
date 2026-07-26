@@ -165,7 +165,7 @@ export function Payment() {
         } else if (resData?.error === "INSUFFICIENT_WALLET_BALANCE") {
           setInsufficientModal(true);
         } else {
-          alert("Wallet payment failed: " + (res?.message || "Error"));
+          alert("Wallet payment failed: " + (resData?.message || "Error"));
         }
       } catch (err: any) {
         alert("Wallet error: " + err.message);

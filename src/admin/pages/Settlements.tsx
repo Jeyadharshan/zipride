@@ -68,7 +68,8 @@ export function AdminSettlementsPage() {
         method: "POST",
         body: JSON.stringify({ reason })
       });
-      if (res && res.success) {
+      const data = await res.json();
+      if (data && data.success) {
         alert("Settlement Rejected.");
         fetchSettlements();
       }
