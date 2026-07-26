@@ -1,18 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import multer from 'multer';
-import cloudinary from '../config/cloudinary.js';
+import { GridFSService } from '../services/gridfsService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsBaseDir = path.resolve(__dirname, '../uploads');
-
-if (!fs.existsSync(uploadsBaseDir)) {
-  fs.mkdirSync(uploadsBaseDir, { recursive: true });
-}
-
-// Setup local memoryStorage to buffer files before pushing to Cloudinary
+// Setup local memoryStorage to buffer files before pushing to MongoDB GridFS
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
@@ -40,14 +31,6 @@ export const validateDriverDocumentFiles = (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Invalid Profile Photo format. Allowed formats are JPG, JPEG, PNG, WEBP.'
-      });
-    }
-    const minSize = 10 * 1024; // 10 KB
-    const maxSize = 2 * 1024 * 1024; // 2 MB
-    if (file.size < minSize || file.size > maxSize) {
-      return res.status(400).json({
-        success: false,
-        message: `Profile Photo size must be up to 2 MB. Provided size is ${(file.size / (1024 * 1024)).toFixed(2)} MB.`
       });
     }
   }
@@ -93,38 +76,20 @@ export const processUploadedFiles = async (req, res, next) => {
     const ext = path.extname(file.originalname) || (file.mimetype === 'application/pdf' ? '.pdf' : '.jpg');
     const safeName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
 
-    const isCloudinaryConfigured = Boolean(
-      process.env.CLOUDINARY_CLOUD_NAME && 
-      process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloudinary_cloud_name'
-    );
-
-    let success = false;
-    if (isCloudinaryConfigured && file.buffer) {
+    if (file.buffer) {
       try {
-        const fileBufferStr = file.buffer.toString('base64');
-        const fileUri = `data:${file.mimetype};base64,${fileBufferStr}`;
-        const uploadResult = await cloudinary.uploader.upload(fileUri, {
-          folder: 'zipride/documents',
-          resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'image',
+        const gridFile = await GridFSService.uploadBuffer(safeName, file.buffer, file.mimetype, {
+          originalname: file.originalname,
+          fieldname: file.fieldname
         });
-        file.cloudinaryUrl = uploadResult.secure_url;
-        success = true;
+        file.cloudinaryUrl = gridFile.fileUrl;
+        file.gridfsId = gridFile.fileId;
+        console.log(`[Upload Middleware] Uploaded file to MongoDB GridFS: ${gridFile.fileUrl}`);
       } catch (err) {
-        console.warn('[Upload Middleware] Cloudinary upload failed:', err.message);
+        console.error('[Upload Middleware] GridFS upload failed:', err.message);
+        const base64Data = file.buffer.toString('base64');
+        file.cloudinaryUrl = `data:${file.mimetype};base64,${base64Data}`;
       }
-    }
-
-    if (!success && file.buffer) {
-      // Also write to local disk for local dev fast access
-      try {
-        const localFilePath = path.join(uploadsBaseDir, safeName);
-        fs.writeFileSync(localFilePath, file.buffer);
-      } catch (e) {}
-
-      // Store persistent Data URI so image URL in DB never disappears on Render restarts
-      const base64Data = file.buffer.toString('base64');
-      file.cloudinaryUrl = `data:${file.mimetype};base64,${base64Data}`;
-      console.log(`[Upload Middleware] Converted uploaded file to permanent Data URI (${(file.size / 1024).toFixed(1)} KB)`);
     }
   }
 

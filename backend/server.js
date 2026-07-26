@@ -36,6 +36,7 @@ import walletRoutes from './routes/walletRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 
 // Controller imports for dynamic compatibility query
 import { AdminController } from './controllers/adminController.js';
@@ -180,6 +181,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/documents', documentRoutes);
+app.use('/api/uploads', uploadRoutes);
+app.use('/api/v1/uploads', uploadRoutes);
 
 // Prepared API Version 2 route stub
 app.use('/api/v2/', (req, res) => {
