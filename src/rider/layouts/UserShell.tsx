@@ -6,6 +6,7 @@ import { Avatar } from "@/shared/components/kit/Primitives";
 import { useAuth } from "@/auth/hooks/useAuth";
 import { cn } from "@/shared/utils/cn";
 import { ActiveRideBanner } from "@/rider/components/ActiveRideBanner";
+import { NotificationCenter } from "@/shared/components/NotificationCenter";
 
 const NAV = [
   { label: "Home", to: "/dashboard" },
@@ -45,13 +46,7 @@ export function UserTopNav() {
           })}
         </nav>
         <div className="flex items-center gap-3">
-          <Link
-            to="/notifications"
-            className="relative grid h-10 w-10 place-items-center rounded-full bg-secondary text-foreground transition-colors hover:bg-accent"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive ring-2 ring-card" />
-          </Link>
+          <NotificationCenter />
           <Link to="/profile">
             <Avatar label={initial} className="h-10 w-10 text-sm" />
           </Link>

@@ -1,5 +1,6 @@
 import express from 'express';
 import db from '../config/db.js';
+import { PaymentController } from '../controllers/paymentController.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -44,5 +45,8 @@ router.get('/', requireAuth, async (req, res, next) => {
     next(err);
   }
 });
+
+router.get('/receipt/:rideId', requireAuth, PaymentController.getReceipt);
+router.get('/:rideId/receipt', requireAuth, PaymentController.getReceipt);
 
 export default router;

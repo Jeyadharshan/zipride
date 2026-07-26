@@ -155,6 +155,24 @@ export async function runDatabaseMigrations() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
       },
       {
+        name: 'driver_settlements',
+        sql: `CREATE TABLE IF NOT EXISTS \`driver_settlements\` (
+          \`id\` INT AUTO_INCREMENT NOT NULL,
+          \`driver_id\` INT NOT NULL,
+          \`profile_id\` CHAR(36) NOT NULL,
+          \`amount\` DECIMAL(12,2) NOT NULL,
+          \`status\` ENUM('Pending', 'Approved', 'Rejected', 'Settled') NOT NULL DEFAULT 'Pending',
+          \`payment_method\` VARCHAR(50) NOT NULL DEFAULT 'Bank Transfer',
+          \`bank_details\` TEXT DEFAULT NULL,
+          \`notes\` TEXT DEFAULT NULL,
+          \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          \`settled_at\` DATETIME DEFAULT NULL,
+          PRIMARY KEY (\`id\`),
+          KEY \`idx_settlements_driver\` (\`driver_id\`),
+          KEY \`idx_settlements_profile\` (\`profile_id\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+      },
+      {
         name: 'app_settings',
         sql: `CREATE TABLE IF NOT EXISTS \`app_settings\` (
           \`setting_key\` VARCHAR(50) NOT NULL,

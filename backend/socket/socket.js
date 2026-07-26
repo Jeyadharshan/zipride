@@ -3,8 +3,9 @@ import Logger from '../utils/logger.js';
 import { handleTrackingEvents } from './tracking.js';
 
 let io = null;
-const userSockets = new Map(); // Maps user_id -> socket_id
-const activeDrivers = new Set(); // Set of driver IDs online
+const userSockets = new Map(); // Maps user_id / profile_id -> socket_id
+const activeDrivers = new Set(); // Set of active online driver profile IDs
+const adminSockets = new Set(); // Set of admin socket IDs
 
 export const initializeSocket = (httpServer) => {
   io = new Server(httpServer, {
@@ -19,20 +20,30 @@ export const initializeSocket = (httpServer) => {
   io.on('connection', (socket) => {
     Logger.socket(`Socket connected: ${socket.id}`);
 
-    // Register user session mapping
+    // Register user session mapping & join role rooms
     socket.on('auth:register', (data) => {
-      const { userId, role } = data;
-      if (userId) {
-        userSockets.set(userId, socket.id);
-        socket.userId = userId;
+      const { userId, profileId, role } = data;
+      const id = userId || profileId;
+      if (id) {
+        userSockets.set(id, socket.id);
+        socket.userId = id;
         socket.role = role;
-        
-        if (role === 'driver') {
-          activeDrivers.add(userId);
+
+        // Join room by role
+        if (role === 'admin') {
+          adminSockets.add(socket.id);
+          socket.join('admins');
+        } else if (role === 'driver') {
+          activeDrivers.add(id);
+          socket.join('drivers');
           io.emit('driver:count_update', { count: activeDrivers.size });
+          io.to('admins').emit('driver-online', { driverId: id, timestamp: new Date() });
+        } else if (role === 'rider') {
+          socket.join('riders');
         }
-        
-        Logger.socket(`User ${userId} (${role}) registered on socket: ${socket.id}`);
+
+        socket.join(`user_${id}`);
+        Logger.socket(`User ${id} (${role}) registered on socket: ${socket.id}`);
       }
     });
 
@@ -52,6 +63,9 @@ export const initializeSocket = (httpServer) => {
         if (socket.role === 'driver') {
           activeDrivers.delete(socket.userId);
           io.emit('driver:count_update', { count: activeDrivers.size });
+          io.to('admins').emit('driver-offline', { driverId: socket.userId, timestamp: new Date() });
+        } else if (socket.role === 'admin') {
+          adminSockets.delete(socket.id);
         }
         Logger.socket(`User mapping cleared for: ${socket.userId}`);
       }
@@ -64,12 +78,29 @@ export const initializeSocket = (httpServer) => {
 export const getIo = () => io;
 
 export const sendToUser = (userId, eventName, payload) => {
-  if (io) {
+  if (io && userId) {
     const socketId = userSockets.get(userId);
     if (socketId) {
       io.to(socketId).emit(eventName, payload);
-      return true;
     }
+    io.to(`user_${userId}`).emit(eventName, payload);
+    return true;
+  }
+  return false;
+};
+
+export const broadcastToAdmins = (eventName, payload) => {
+  if (io) {
+    io.to('admins').emit(eventName, payload);
+    return true;
+  }
+  return false;
+};
+
+export const broadcastAll = (eventName, payload) => {
+  if (io) {
+    io.emit(eventName, payload);
+    return true;
   }
   return false;
 };

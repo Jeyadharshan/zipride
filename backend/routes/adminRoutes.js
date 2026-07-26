@@ -23,6 +23,9 @@ router.get('/settings', requireAuth, requireAdmin, AdminController.getSettings);
 router.put('/settings', requireAuth, requireAdmin, AdminController.updateSetting);
 router.put('/settings/bulk', requireAuth, requireAdmin, AdminController.updateSettings);
 router.get('/wallet', requireAuth, requireAdmin, AdminController.getWalletStats);
+router.get('/settlements', requireAuth, requireAdmin, AdminController.getSettlements);
+router.post('/settlement/:id/approve', requireAuth, requireAdmin, AdminController.approveSettlement);
+router.post('/settlement/:id/reject', requireAuth, requireAdmin, AdminController.rejectSettlement);
 
 export default router;
 

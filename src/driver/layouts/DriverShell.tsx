@@ -1,17 +1,19 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Bell, Navigation, Wallet, User } from "lucide-react";
+import { LayoutDashboard, Bell, Navigation, Wallet, User, ArrowUpRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { Logo } from "@/shared/components/brand/Logo";
 import { Avatar } from "@/shared/components/kit/Primitives";
 import { DRIVER } from "@/shared/constants/zip-data";
 import { cn } from "@/shared/utils/cn";
 import { useAuth } from "@/auth/hooks/useAuth";
+import { NotificationCenter } from "@/shared/components/NotificationCenter";
 
 const NAV = [
   { label: "Dashboard", to: "/driver/dashboard", icon: LayoutDashboard },
   { label: "Requests", to: "/driver/requests", icon: Bell },
   { label: "Active", to: "/driver/active", icon: Navigation },
   { label: "Earnings", to: "/driver/earnings", icon: Wallet },
+  { label: "Settlements", to: "/driver/settlements", icon: ArrowUpRight },
   { label: "Profile", to: "/driver/profile", icon: User },
 ];
 
@@ -50,6 +52,7 @@ export function DriverShell({ children, className }: { children: ReactNode; clas
             <span className="hidden items-center gap-2 rounded-full bg-success/15 px-3 py-1.5 text-xs font-semibold text-success sm:inline-flex">
               <span className="h-2 w-2 rounded-full bg-success" /> Online
             </span>
+            <NotificationCenter />
             <Link to="/driver/profile">
               <Avatar label={driverName[0]} src={avatarUrl} className="h-10 w-10 text-sm" />
             </Link>

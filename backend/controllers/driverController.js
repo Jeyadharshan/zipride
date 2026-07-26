@@ -174,5 +174,33 @@ export const DriverController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async getSettlement(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const data = await SettlementService.getDriverSettlementSummary(req.user.id);
+      return res.json({
+        success: true,
+        message: 'Driver settlement summary retrieved.',
+        data
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async requestSettlement(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const result = await SettlementService.requestSettlement(req.user.id, req.body);
+      return res.json({
+        success: true,
+        message: 'Settlement request submitted.',
+        data: result
+      });
+    } catch (err) {
+      next(err);
+    }
   }
 };

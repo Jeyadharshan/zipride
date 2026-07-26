@@ -102,5 +102,27 @@ export const PaymentController = {
       Logger.error('[Razorpay Webhook Error]:', err.message);
       res.status(500).json({ success: false, error: err.message });
     }
+  },
+
+  async getReceipt(req, res, next) {
+    try {
+      const { ReceiptService } = await import('../services/receiptService.js');
+      const rideId = req.params.rideId;
+      const receipt = await ReceiptService.getRideReceipt(rideId);
+
+      if (req.query.format === 'html') {
+        const html = ReceiptService.generateReceiptHtml(receipt);
+        res.setHeader('Content-Type', 'text/html');
+        return res.send(html);
+      }
+
+      return res.json({
+        success: true,
+        message: 'Ride receipt generated.',
+        data: receipt
+      });
+    } catch (err) {
+      next(err);
+    }
   }
 };

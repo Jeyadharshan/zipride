@@ -7,6 +7,7 @@ import {
   Route as RouteIcon,
   TrendingUp,
   Wallet,
+  ArrowUpToLine,
   FileBarChart,
   Settings as SettingsIcon,
   LogOut,
@@ -16,6 +17,7 @@ import type { ReactNode } from "react";
 import { Logo } from "@/shared/components/brand/Logo";
 import { Avatar } from "@/shared/components/kit/Primitives";
 import { cn } from "@/shared/utils/cn";
+import { NotificationCenter } from "@/shared/components/NotificationCenter";
 
 const NAV = [
   { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
@@ -25,6 +27,7 @@ const NAV = [
   { label: "Rides", to: "/admin/rides", icon: RouteIcon },
   { label: "Revenue", to: "/admin/revenue", icon: TrendingUp },
   { label: "Wallet Panel", to: "/admin/wallet", icon: Wallet },
+  { label: "Settlements", to: "/admin/settlements", icon: ArrowUpToLine },
   { label: "Reports", to: "/admin/reports", icon: FileBarChart },
   { label: "Settings", to: "/admin/settings", icon: SettingsIcon },
 ];
@@ -89,6 +92,7 @@ export function AdminShell({
             {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
           </div>
           <div className="flex items-center gap-3">
+            <NotificationCenter />
             <Avatar label={label} src={avatar} className="h-10 w-10 text-sm" />
           </div>
         </header>

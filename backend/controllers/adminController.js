@@ -697,6 +697,36 @@ export const AdminController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async getSettlements(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const data = await SettlementService.getAllSettlements(req.query);
+      return sendSuccess(res, 'Settlement requests retrieved.', data);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async approveSettlement(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const result = await SettlementService.approveSettlement(req.params.id, req.body.notes);
+      return sendSuccess(res, 'Settlement request approved.', result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async rejectSettlement(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const result = await SettlementService.rejectSettlement(req.params.id, req.body.reason);
+      return sendSuccess(res, 'Settlement request rejected.', result);
+    } catch (err) {
+      next(err);
+    }
   }
 };
 
