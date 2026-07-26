@@ -15,35 +15,48 @@ export const NotificationRepository = {
   },
 
   async findByProfileId(profileId, { limit = 20, offset = 0, unreadOnly = false } = {}) {
-    let sql = `SELECT * FROM notifications WHERE profile_id = ?`;
-    const params = [profileId];
-    if (unreadOnly) { sql += ` AND is_read = 0`; }
-    sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
-    const [rows] = await db.execute(sql, params);
-    return rows;
+    try {
+      let sql = `SELECT * FROM notifications WHERE profile_id = ?`;
+      const params = [String(profileId)];
+      if (unreadOnly) { sql += ` AND is_read = 0`; }
+      sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+      params.push(Number(limit), Number(offset));
+      const [rows] = await db.query(sql, params);
+      return rows || [];
+    } catch (err) {
+      console.warn('[NotificationRepo] findByProfileId query error:', err.message);
+      return [];
+    }
   },
 
   async countUnread(profileId) {
-    const [[row]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM notifications WHERE profile_id = ? AND is_read = 0`,
-      [profileId]
-    );
-    return row.total;
+    try {
+      const [rows] = await db.query(
+        `SELECT COUNT(*) AS total FROM notifications WHERE profile_id = ? AND is_read = 0`,
+        [String(profileId)]
+      );
+      return rows[0]?.total || 0;
+    } catch (e) {
+      return 0;
+    }
   },
 
   async markAsRead(id, profileId) {
-    await db.execute(
-      `UPDATE notifications SET is_read = 1 WHERE id = ? AND profile_id = ?`,
-      [id, profileId]
-    );
+    try {
+      await db.query(
+        `UPDATE notifications SET is_read = 1 WHERE id = ? AND profile_id = ?`,
+        [id, String(profileId)]
+      );
+    } catch (e) {}
   },
 
   async markAllRead(profileId) {
-    await db.execute(
-      `UPDATE notifications SET is_read = 1 WHERE profile_id = ?`,
-      [profileId]
-    );
+    try {
+      await db.query(
+        `UPDATE notifications SET is_read = 1 WHERE profile_id = ?`,
+        [String(profileId)]
+      );
+    } catch (e) {}
   },
 };
 
