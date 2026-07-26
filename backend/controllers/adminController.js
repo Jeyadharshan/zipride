@@ -138,7 +138,7 @@ export const AdminController = {
         const rawProfilePhoto = row.direct_profile_photo || row.profile_avatar || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || mongoDocs?.profilePhoto || row.mysql_profile_photo || null;
         const rawLicensePhoto = row.direct_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || mongoDocs?.drivingLicense || null;
         
-        const profilePhoto = formatAssetUrl(rawProfilePhoto);
+        const profilePhoto = formatAssetUrl(rawProfilePhoto, row.full_name);
         const licensePhoto = formatAssetUrl(rawLicensePhoto);
 
         return {
@@ -187,7 +187,7 @@ export const AdminController = {
             const rawProfilePhoto = row.direct_profile_photo || row.profile_avatar || row.mysql_profile_photo || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || mongoDocs?.profilePhoto || null;
             const rawLicensePhoto = row.direct_license_photo || row.mysql_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || mongoDocs?.drivingLicense || null;
 
-            const profilePhoto = formatAssetUrl(rawProfilePhoto);
+            const profilePhoto = formatAssetUrl(rawProfilePhoto, row.full_name);
             const licensePhoto = formatAssetUrl(rawLicensePhoto);
 
             return {

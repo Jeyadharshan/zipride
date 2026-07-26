@@ -1,8 +1,12 @@
 // backend/utils/formatUrl.js
 // Utility to prepend base backend URL to relative upload asset paths
 
-export function formatAssetUrl(urlOrPath) {
+export function formatAssetUrl(urlOrPath, fallbackName = '') {
   if (!urlOrPath || typeof urlOrPath !== 'string' || urlOrPath.trim() === '') {
+    if (fallbackName && typeof fallbackName === 'string' && fallbackName.trim() !== '') {
+      const name = encodeURIComponent(fallbackName.trim());
+      return `https://ui-avatars.com/api/?name=${name}&background=0284c7&color=fff&size=200`;
+    }
     return null;
   }
   const clean = urlOrPath.trim();

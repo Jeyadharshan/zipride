@@ -83,6 +83,30 @@ export const GridFSService = {
     } catch (err) {
       return false;
     }
+  },
+
+  async getFileStreamByFilename(filename) {
+    let db = getMongoDB();
+    if (!db) {
+      db = await connectMongoDB();
+    }
+    if (!db) return null;
+
+    try {
+      const gridBucket = new GridFSBucket(db, { bucketName: 'uploads' });
+      const files = await gridBucket.find({ filename }).toArray();
+      if (!files || files.length === 0) return null;
+
+      const fileInfo = files[0];
+      const downloadStream = gridBucket.openDownloadStream(fileInfo._id);
+      return {
+        fileInfo,
+        contentType: fileInfo.contentType || fileInfo.metadata?.mimetype || 'image/jpeg',
+        downloadStream
+      };
+    } catch (err) {
+      return null;
+    }
   }
 };
 

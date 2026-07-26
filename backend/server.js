@@ -148,7 +148,7 @@ app.use('/uploads', (req, res, next) => {
   next();
 });
 
-app.get('/uploads/:filename', (req, res) => {
+app.get('/uploads/:filename', async (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(uploadsBaseDir, filename);
 
@@ -156,7 +156,17 @@ app.get('/uploads/:filename', (req, res) => {
     return res.sendFile(filePath);
   }
 
-  // If the file does not exist on disk, return a clean SVG placeholder image instead of "Cannot GET /uploads/..."
+  try {
+    const { GridFSService } = await import('./services/gridfsService.js');
+    const gridFile = await GridFSService.getFileStreamByFilename(filename);
+    if (gridFile) {
+      res.setHeader('Content-Type', gridFile.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return gridFile.downloadStream.pipe(res);
+    }
+  } catch (e) {}
+
+  // If the file does not exist on disk or GridFS, return a clean SVG placeholder image instead of "Cannot GET /uploads/..."
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=86400');
   return res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="background:#f1f5f9;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`);
