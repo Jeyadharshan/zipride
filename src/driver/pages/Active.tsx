@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/hooks/useAuth";
 import { cn } from "@/shared/utils/cn";
 import { fetchRoute } from "@/map/services/routing";
+import { getSocket } from "@/shared/lib/socket";
 
 
 
@@ -60,6 +61,40 @@ export function Active() {
     const interval = setInterval(fetchMessages, 2000);
     return () => clearInterval(interval);
   }, [showChat]);
+
+  // Live Driver GPS Location Tracking Emitter (every 3 seconds)
+  useEffect(() => {
+    const rideId = localStorage.getItem("driver_active_ride_id") || rawRide?.id;
+    const socket = getSocket();
+
+    if (rideId) {
+      socket.emit("ride:join", { rideId });
+    }
+
+    const gpsInterval = setInterval(() => {
+      if (navigator.geolocation && profile?.id) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude, heading, speed } = pos.coords;
+            socket.emit("driver:location_update", {
+              driverId: profile.id,
+              latitude,
+              longitude,
+              heading: heading || 0,
+              speed: speed || 0,
+              rideId: rideId || null
+            });
+          },
+          () => {},
+          { enableHighAccuracy: true, timeout: 4000 }
+        );
+      }
+    }, 3000);
+
+    return () => {
+      clearInterval(gpsInterval);
+    };
+  }, [profile, rawRide]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -67,6 +67,12 @@ export const handleTrackingEvents = (io, socket, userSockets) => {
       };
 
       if (rideId) {
+        // Record path in MongoDB Atlas
+        try {
+          const { MongoService } = await import('../services/mongoService.js');
+          MongoService.appendRidePath(rideId, driverId, latitude, longitude, speed, heading).catch(() => {});
+        } catch (_) {}
+
         // Compute ETA and remaining distance using ride dropoff
         let eta = null;
         let remainingKm = null;
@@ -89,11 +95,13 @@ export const handleTrackingEvents = (io, socket, userSockets) => {
           remainingKm: remainingKm ? +remainingKm.toFixed(2) : null,
         });
 
-        // Also emit specific driver channel
+        // Broadcast to general channels
         io.emit(`driver:coords:${driverId}`, locationPayload);
+        io.emit('driver-location-update', { ...locationPayload, rideId });
       } else {
         // Driver is online but not on a ride — general broadcast
         io.emit(`driver:coords:${driverId}`, locationPayload);
+        io.emit('driver-location-update', locationPayload);
       }
     } catch (err) {
       Logger.error(`[Tracking] Location update failed for driver ${driverId}:`, err.message);

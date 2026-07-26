@@ -17,6 +17,7 @@ import { MapCanvas } from "@/map/components/MapCanvas";
 import { DRIVER, TRIP } from "@/shared/constants/zip-data";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/hooks/useAuth";
+import { useSocket } from "@/shared/hooks/useSocket";
 import { motion } from "motion/react";
 
 
@@ -97,6 +98,27 @@ export function Tracking() {
       console.error("Failed to send message:", err);
     }
   };
+
+  const [liveDriverCoords, setLiveDriverCoords] = useState<[number, number] | null>(null);
+  const [liveEta, setLiveEta] = useState<number | null>(null);
+  const [liveDistanceKm, setLiveDistanceKm] = useState<number | null>(null);
+
+  // Live Socket.IO Tracking Listener
+  useSocket({
+    "driver:location_changed": (data: any) => {
+      if (data?.latitude && data?.longitude) {
+        setLiveDriverCoords([data.latitude, data.longitude]);
+        if (data.eta !== undefined && data.eta !== null) setLiveEta(data.eta);
+        if (data.remainingKm !== undefined && data.remainingKm !== null) setLiveDistanceKm(data.remainingKm);
+      }
+    },
+    "ride:driver_arrived": () => {
+      setRide((prev: any) => ({ ...prev, status: "arriving" }));
+    },
+    "ride-completed": () => {
+      navigate({ to: "/completed", replace: true });
+    }
+  });
 
   const { profile } = useAuth();
 
