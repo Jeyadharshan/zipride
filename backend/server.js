@@ -174,6 +174,8 @@ app.use('/api/driver', driverRoutes);
 app.use('/api/v1/rides', rideRoutes);
 app.use('/api/v1/wallet', walletRoutes);
 app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/payment', paymentRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/documents', documentRoutes);

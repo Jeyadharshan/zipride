@@ -24,12 +24,16 @@ try {
   console.warn('[Test] Could not load backend/.env — using defaults');
 }
 
+const host = process.env.MYSQL_HOST || 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com';
+const port = parseInt(process.env.MYSQL_PORT) || 4000;
+
 const config = {
-  host:     process.env.MYSQL_HOST     || '127.0.0.1',
-  port:     parseInt(process.env.MYSQL_PORT) || 3307,
-  user:     process.env.MYSQL_USER     || 'root',
-  password: process.env.MYSQL_PASSWORD || 'Abirami@27',
+  host,
+  port,
+  user:     process.env.MYSQL_USER     || 'cBAXK2TmpioAcwS.root',
+  password: process.env.MYSQL_PASSWORD || '9B7vqd4Ze5YvGkUV',
   database: process.env.MYSQL_DATABASE || 'zipride',
+  ssl:      (host.includes('tidbcloud') || port === 4000) ? { minVersion: 'TLSv1.2', rejectUnauthorized: false } : undefined
 };
 
 console.log(`\n[Test] Connecting to MySQL...`);
@@ -59,7 +63,7 @@ try {
   }
 
   // Quick check for core tables
-  const coreTables = ['users', 'drivers', 'rides', 'wallets', 'payments', 'notifications'];
+  const coreTables = ['profiles', 'driver_profiles', 'rides', 'wallets', 'payments', 'notifications'];
   const existing = tables.map(t => Object.values(t)[0]);
   const missing = coreTables.filter(t => !existing.includes(t));
 
@@ -67,7 +71,7 @@ try {
     console.warn(`\n⚠️  Missing core tables: ${missing.join(', ')}`);
     console.warn('   Run the schema SQL file to create them.');
   } else {
-    console.log('\n✅ All core tables present (users, drivers, rides, wallets, payments, notifications)');
+    console.log('\n✅ All core tables present (profiles, driver_profiles, rides, wallets, payments, notifications)');
   }
 
   console.log('\n[Test] Connection test complete.\n');

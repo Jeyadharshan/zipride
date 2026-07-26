@@ -4,6 +4,8 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Require auth for payment order creation and signature verification
+router.post('/create-order', requireAuth, PaymentController.createPaymentOrder);
 router.post('/order', requireAuth, PaymentController.createPaymentOrder);
 router.post('/verify', requireAuth, PaymentController.verifyPayment);
 

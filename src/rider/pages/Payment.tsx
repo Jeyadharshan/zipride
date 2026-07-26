@@ -99,7 +99,7 @@ export function Payment() {
 
       // Create Order on Backend
       const jwtToken = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token") || "";
-      const orderRes = await apiFetch("/api/v1/payments/order", {
+      const orderRes = await apiFetch("/api/payment/create-order", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -117,42 +117,56 @@ export function Payment() {
         throw new Error(orderJson.message || "Failed to initiate payment.");
       }
 
-      const { payment, razorpayOrderId } = orderJson.data;
+      const razorpayOrderId = orderJson.razorpay_order_id || orderJson.data?.razorpay_order_id;
+      const razorpayKeyId = orderJson.key_id || orderJson.data?.key_id || "rzp_live_THQ2isXoSiOoDg";
+
+      if (!razorpayOrderId) {
+        throw new Error("Razorpay Order ID was not returned by server.");
+      }
 
       // Open Razorpay Modal
       const options = {
-        key: "rzp_test_TDjpcK2U8ITG2H",
+        key: razorpayKeyId,
         amount: Math.round(actualFare * 100),
         currency: "INR",
         name: "ZipRide Payment",
-        description: `Payment for Ride: ${payment?.transaction_reference || "ZR-Trip"}`,
+        description: `Payment for Ride ZR-${activeRideId.slice(0, 8)}`,
         order_id: razorpayOrderId,
         handler: async (response: any) => {
           setLoading(true);
           try {
-            const verifyRes = await apiFetch("/api/v1/payments/verify", {
+            const verifyRes = await apiFetch("/api/payment/verify", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${jwtToken}`
               },
               body: JSON.stringify({
-                paymentId: payment.id,
-                transactionReference: response.razorpay_payment_id
+                razorpay_order_id: response.razorpay_order_id || razorpayOrderId,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                rideId: activeRideId
               })
             });
 
             const verifyJson = await verifyRes.json();
-            if (verifyJson.success) {
+            if (verifyJson.success && verifyJson.verified) {
               setPaid(true);
               localStorage.removeItem("active_ride_id");
-              setTimeout(() => navigate({ to: "/rating", replace: true }), 2000);
+              localStorage.removeItem("payment_ride_id");
+              localStorage.removeItem("payment_amount");
+              setTimeout(() => navigate({ to: "/rating", replace: true }), 1500);
             } else {
-              alert("Payment verification failed: " + verifyJson.message);
+              alert("Payment verification failed: " + (verifyJson.message || "Invalid signature"));
             }
           } catch (err: any) {
             alert("Verification error: " + err.message);
           } finally {
+            setLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
             setLoading(false);
           }
         },

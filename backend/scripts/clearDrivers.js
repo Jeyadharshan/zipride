@@ -6,12 +6,16 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 dotenv.config();
 
+const host = process.env.MYSQL_HOST || 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com';
+const port = parseInt(process.env.MYSQL_PORT) || 4000;
+
 const dbConfig = {
-  host: process.env.MYSQL_HOST || '127.0.0.1',
-  port: parseInt(process.env.MYSQL_PORT) || 3307,
-  user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || 'Abirami@27',
+  host,
+  port,
+  user: process.env.MYSQL_USER || 'cBAXK2TmpioAcwS.root',
+  password: process.env.MYSQL_PASSWORD || '9B7vqd4Ze5YvGkUV',
   database: process.env.MYSQL_DATABASE || 'zipride',
+  ssl: (host.includes('tidbcloud') || port === 4000 || process.env.MYSQL_SSL === 'true') ? { minVersion: 'TLSv1.2', rejectUnauthorized: false } : undefined
 };
 
 async function clearDrivers() {

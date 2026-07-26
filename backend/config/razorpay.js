@@ -1,6 +1,11 @@
-// backend/config/razorpay.js
+import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
 dotenv.config();
+
+export const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 export const razorpayConfig = {
   keyId: process.env.RAZORPAY_KEY_ID || '',
@@ -9,7 +14,7 @@ export const razorpayConfig = {
 };
 
 if (!razorpayConfig.keyId || !razorpayConfig.keySecret) {
-  console.warn('[Razorpay Config] ⚠️  RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET not set. Payments will run in mock mode.');
+  console.warn('[Razorpay Config] ⚠️  RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET not set in environment.');
 }
 
-export default razorpayConfig;
+export default razorpay;

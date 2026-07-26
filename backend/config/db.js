@@ -10,19 +10,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Validate required MySQL env vars with Aiven credentials fallback
-const MYSQL_HOST     = process.env.MYSQL_HOST     || 'mysql-229b3785-zipride.c.aivencloud.com';
-const MYSQL_PORT     = Number(process.env.MYSQL_PORT) || 15536;
-const MYSQL_USER     = process.env.MYSQL_USER     || 'avnadmin';
-const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD;
+// Validate required MySQL env vars with TiDB Cloud credentials fallback
+const MYSQL_HOST     = process.env.MYSQL_HOST     || 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com';
+const MYSQL_PORT     = Number(process.env.MYSQL_PORT) || 4000;
+const MYSQL_USER     = process.env.MYSQL_USER     || 'cBAXK2TmpioAcwS.root';
+const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || '9B7vqd4Ze5YvGkUV';
 const MYSQL_DATABASE = process.env.MYSQL_DATABASE || 'zipride';
 
 /**
- * Resolves SSL configuration for Aiven MySQL with "Require and Verify CA".
- * Loads ca.pem, service.cert, and service.key from:
- * 1. Environment variables containing direct content (MYSQL_SSL_CA, MYSQL_SSL_CERT, MYSQL_SSL_KEY)
- * 2. Custom file paths in env (MYSQL_SSL_CA_PATH, MYSQL_SSL_CERT_PATH, MYSQL_SSL_KEY_PATH)
- * 3. Default directory locations (backend/certs/, backend/root, or current working directory)
+ * Resolves SSL configuration for TiDB Cloud / Aiven / Standard MySQL.
  */
 function resolveSslConfig() {
   const isExplicitSsl = process.env.MYSQL_SSL === 'true' || process.env.MYSQL_SSL_REQUIRED === 'true';
@@ -55,65 +51,31 @@ function resolveSslConfig() {
   const certFilePath = findCertFile('service.cert', process.env.MYSQL_SSL_CERT_PATH);
   const keyFilePath  = findCertFile('service.key', process.env.MYSQL_SSL_KEY_PATH);
 
-  const hasCertFiles = Boolean(caFilePath || certFilePath || keyFilePath);
-
-  // If SSL is not explicitly requested and no cert files/vars exist, fallback to default SSL
-  if (!isExplicitSsl && !hasSslEnvVars && !hasCertFiles) {
-    return { rejectUnauthorized: false };
-  }
-
   // Content loading
   let caContent   = process.env.MYSQL_SSL_CA || process.env.MYSQL_CA_PEM;
   let certContent = process.env.MYSQL_SSL_CERT || process.env.MYSQL_SERVICE_CERT;
   let keyContent  = process.env.MYSQL_SSL_KEY || process.env.MYSQL_SERVICE_KEY;
 
-  const missing = [];
+  if (caFilePath && !caContent) caContent = fs.readFileSync(caFilePath, 'utf8');
+  if (certFilePath && !certContent) certContent = fs.readFileSync(certFilePath, 'utf8');
+  if (keyFilePath && !keyContent) keyContent = fs.readFileSync(keyFilePath, 'utf8');
 
-  if (!caContent) {
-    if (caFilePath) {
-      caContent = fs.readFileSync(caFilePath, 'utf8');
-    } else {
-      missing.push('ca.pem (checked MYSQL_SSL_CA_PATH / backend/certs/ca.pem / env MYSQL_SSL_CA)');
-    }
+  if (caContent) {
+    console.log('🔒 [db.js] SSL configured using CA cert file/variable.');
+    const sslObj = { ca: caContent, rejectUnauthorized: false };
+    if (certContent) sslObj.cert = certContent;
+    if (keyContent) sslObj.key = keyContent;
+    return sslObj;
   }
 
-  if (!certContent) {
-    if (certFilePath) {
-      certContent = fs.readFileSync(certFilePath, 'utf8');
-    } else {
-      missing.push('service.cert (checked MYSQL_SSL_CERT_PATH / backend/certs/service.cert / env MYSQL_SSL_CERT)');
-    }
+  const isCloudHost = MYSQL_HOST.includes('tidbcloud.com') || MYSQL_HOST.includes('aivencloud.com') || MYSQL_PORT === 4000;
+
+  if (isCloudHost || isExplicitSsl || hasSslEnvVars) {
+    console.log('🔒 [db.js] Enabling SSL mode for Cloud database (minVersion: TLSv1.2).');
+    return { minVersion: 'TLSv1.2', rejectUnauthorized: false };
   }
 
-  if (!keyContent) {
-    if (keyFilePath) {
-      keyContent = fs.readFileSync(keyFilePath, 'utf8');
-    } else {
-      missing.push('service.key (checked MYSQL_SSL_KEY_PATH / backend/certs/service.key / env MYSQL_SSL_KEY)');
-    }
-  }
-
-  if (missing.length > 0) {
-    console.error('\n❌ [db.js] Aiven MySQL SSL Setup Error — Missing required certificate files or variables:');
-    missing.forEach(item => console.error(`  • ${item}`));
-    console.error('\nPlease place ca.pem, service.cert, and service.key in "backend/certs/" or provide environment variables.\n');
-    
-    if (isExplicitSsl || hasSslEnvVars) {
-      throw new Error(`Aiven MySQL SSL Certificate Error: Missing ${missing.map(m => m.split(' ')[0]).join(', ')}`);
-    }
-
-    console.warn('⚠️ [db.js] Partial SSL certs found — falling back to unverified SSL connection.');
-    return { rejectUnauthorized: false };
-  }
-
-  console.log('🔒 [db.js] Aiven MySQL SSL configured with "Require and Verify CA" (ca.pem, service.cert, service.key loaded successfully).');
-
-  return {
-    ca: caContent,
-    cert: certContent,
-    key: keyContent,
-    rejectUnauthorized: true // Require and Verify CA
-  };
+  return { rejectUnauthorized: false };
 }
 
 const sslOption = resolveSslConfig();

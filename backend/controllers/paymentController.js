@@ -4,40 +4,72 @@ import Logger from '../utils/logger.js';
 export const PaymentController = {
   async createPaymentOrder(req, res, next) {
     try {
-      const { rideId, amount, paymentMethod } = req.body;
-      if (!rideId || !amount) {
-        return res.status(400).json({ success: false, message: 'Ride ID and Amount are required.' });
+      const rideId = req.body.rideId || req.body.ride_id;
+      const amount = req.body.amount;
+      const paymentMethod = req.body.paymentMethod || req.body.payment_method || 'Razorpay';
+
+      if (!rideId || amount === undefined || amount === null) {
+        return res.status(400).json({ success: false, message: 'rideId and amount are required.' });
       }
 
-      const orderData = await PaymentService.createOrder(rideId, amount, paymentMethod || 'razorpay');
-      
-      return res.json({
+      const orderData = await PaymentService.createOrder(rideId, amount, paymentMethod);
+
+      return res.status(200).json({
         success: true,
-        message: 'Payment order generated.',
+        message: 'Payment order generated successfully.',
+        razorpay_order_id: orderData.razorpay_order_id,
+        amount: orderData.amount,
+        currency: orderData.currency || 'INR',
+        key_id: orderData.key_id,
         data: orderData
       });
     } catch (err) {
-      next(err);
+      Logger.error('[PaymentController.createPaymentOrder Error]:', err.message);
+      return res.status(500).json({ success: false, message: err.message });
     }
   },
 
   async verifyPayment(req, res, next) {
     try {
-      const { paymentId, transactionReference } = req.body;
-      if (!paymentId || !transactionReference) {
-        return res.status(400).json({ success: false, message: 'Payment ID and Transaction Reference are required.' });
+      const razorpay_order_id = req.body.razorpay_order_id || req.body.paymentId;
+      const razorpay_payment_id = req.body.razorpay_payment_id || req.body.transactionReference;
+      const razorpay_signature = req.body.razorpay_signature;
+      const rideId = req.body.rideId || req.body.ride_id;
+
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return res.status(400).json({
+          success: false,
+          verified: false,
+          message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required for verification.'
+        });
       }
 
-      const payment = await PaymentService.completePayment(paymentId, transactionReference);
-      Logger.payment(`Payment ${paymentId} completed successfully. Reference: ${transactionReference}`);
+      const result = await PaymentService.verifyPayment({
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        rideId,
+      });
 
-      return res.json({
+      if (!result.success || !result.verified) {
+        return res.status(400).json({
+          success: false,
+          verified: false,
+          message: result.message || 'Payment signature verification failed.',
+          rideStatus: 'Payment Pending',
+          paymentStatus: 'Pending'
+        });
+      }
+
+      return res.status(200).json({
         success: true,
-        message: 'Payment verified and completed.',
-        data: payment
+        verified: true,
+        message: 'Payment verified and ride completed successfully.',
+        data: result
       });
     } catch (err) {
-      next(err);
+      Logger.error('[PaymentController.verifyPayment Error]:', err.message);
+      return res.status(500).json({ success: false, verified: false, message: err.message });
     }
   },
 

@@ -67,6 +67,23 @@ export const DriverRepository = {
     );
   },
 
+  // Release driver back to online/available after completed ride
+  async releaseDriver(driverIdOrProfileId) {
+    if (!driverIdOrProfileId) return;
+    const isNum = !isNaN(driverIdOrProfileId) && Number.isInteger(Number(driverIdOrProfileId));
+    if (isNum) {
+      await db.execute(
+        `UPDATE driver_profiles SET is_online = 1, updated_at = NOW() WHERE id = ?`,
+        [driverIdOrProfileId]
+      );
+    } else {
+      await db.execute(
+        `UPDATE driver_profiles SET is_online = 1, updated_at = NOW() WHERE profile_id = ?`,
+        [String(driverIdOrProfileId)]
+      );
+    }
+  },
+
   // Update full live location + status — driver_live_location.driver_id = driver_profiles.id (INT)
   async updateLocation(profileId, latitude, longitude, heading = 0, speed = 0, accuracy = 0, batteryPct = null, networkType = null, currentRideId = null) {
     const [dpRows] = await db.execute(`SELECT id FROM driver_profiles WHERE profile_id = ? LIMIT 1`, [profileId]);

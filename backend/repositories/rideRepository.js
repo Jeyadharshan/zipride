@@ -23,12 +23,12 @@ export const RideRepository = {
     );
     const rideId = result.insertId;
 
-    // Store pickup/dropoff as ride_locations entries
+    // Store pickup/dropoff as ride_locations entry
     await db.execute(
-      `INSERT INTO ride_locations (ride_id, location_type, address, latitude, longitude, created_at)
-       VALUES (?, 'pickup', ?, ?, ?, NOW()), (?, 'dropoff', ?, ?, ?, NOW())`,
-      [rideId, pickup_address, pickup_latitude, pickup_longitude,
-       rideId, dropoff_address, dropoff_latitude, dropoff_longitude]
+      `INSERT INTO ride_locations (ride_id, pickup_address, pickup_lat, pickup_lng, drop_address, drop_lat, drop_lng, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [rideId, pickup_address || '', pickup_latitude || 0, pickup_longitude || 0,
+       dropoff_address || '', dropoff_latitude || 0, dropoff_longitude || 0]
     );
 
     return rideId;
@@ -37,20 +37,19 @@ export const RideRepository = {
   async findById(rideId) {
     const [rows] = await db.execute(
       `SELECT r.*,
-              pickup.address AS pickup_address, pickup.latitude AS pickup_latitude, pickup.longitude AS pickup_longitude,
-              dropoff.address AS dropoff_address, dropoff.latitude AS dropoff_latitude, dropoff.longitude AS dropoff_longitude,
+              rl.pickup_address, rl.pickup_lat AS pickup_latitude, rl.pickup_lng AS pickup_longitude,
+              rl.drop_address AS dropoff_address, rl.drop_lat AS dropoff_latitude, rl.drop_lng AS dropoff_longitude,
               p.full_name AS rider_name, p.phone AS rider_phone,
               dp_p.full_name AS driver_name, dp_p.phone AS driver_phone,
               dp.rating AS driver_rating, dp.driver_code,
               v.vehicle_number, v.vehicle_brand, v.vehicle_model, v.vehicle_color,
               ro.otp AS ride_otp, ro.is_verified AS otp_verified
        FROM rides r
-       JOIN profiles p ON r.rider_id = p.id
+       LEFT JOIN profiles p ON r.rider_id = p.id
        LEFT JOIN driver_profiles dp ON r.driver_id = dp.id
        LEFT JOIN profiles dp_p ON dp.profile_id = dp_p.id
        LEFT JOIN vehicles v ON r.vehicle_id = v.id
-       LEFT JOIN ride_locations pickup ON r.id = pickup.ride_id AND pickup.location_type = 'pickup'
-       LEFT JOIN ride_locations dropoff ON r.id = dropoff.ride_id AND dropoff.location_type = 'dropoff'
+       LEFT JOIN ride_locations rl ON r.id = rl.ride_id
        LEFT JOIN ride_otp ro ON r.id = ro.ride_id
        WHERE r.id = ? LIMIT 1`,
       [rideId]
@@ -67,6 +66,17 @@ export const RideRepository = {
   },
 
   async updateStatus(rideId, status, extraFields = {}) {
+    let targetStatus = status;
+    if (status === 'Completed' || status === 'completed') targetStatus = 'Ride Completed';
+
+    const validStatuses = [
+      'Searching', 'Driver Assigned', 'Driver Accepted', 'Driver Arriving',
+      'Driver Arrived', 'OTP Verified', 'Ride Started', 'Ride Completed', 'Cancelled'
+    ];
+    if (!validStatuses.includes(targetStatus)) {
+      targetStatus = 'Ride Completed';
+    }
+
     const timeField = {
       'Driver Accepted': 'accepted_time',
       'Driver Arrived': 'arrived_time',
@@ -77,12 +87,18 @@ export const RideRepository = {
     };
 
     let sql = `UPDATE rides SET ride_status = ?, updated_at = NOW()`;
-    const params = [status];
+    const params = [targetStatus];
 
-    const tf = timeField[status];
+    const tf = timeField[targetStatus];
     if (tf) { sql += `, ${tf} = NOW()`; }
 
-    for (const [key, val] of Object.entries(extraFields)) {
+    for (let [key, val] of Object.entries(extraFields)) {
+      if (key === 'payment_status') {
+        const strVal = String(val).toLowerCase();
+        if (strVal === 'paid' || strVal === 'completed' || strVal === 'success') val = 'Paid';
+        else if (strVal === 'failed') val = 'Failed';
+        else val = 'Pending';
+      }
       sql += `, ${key} = ?`;
       params.push(val);
     }
@@ -92,10 +108,12 @@ export const RideRepository = {
     await db.execute(sql, params);
 
     // Log status history
-    await db.execute(
-      `INSERT INTO ride_status_history (ride_id, status, changed_at) VALUES (?, ?, NOW())`,
-      [rideId, status]
-    );
+    try {
+      await db.execute(
+        `INSERT INTO ride_status_history (ride_id, ride_status, created_at) VALUES (?, ?, NOW())`,
+        [rideId, targetStatus]
+      );
+    } catch (e) {}
   },
 
   async assignDriver(rideId, driverId, vehicleId) {
@@ -148,11 +166,10 @@ export const RideRepository = {
   async getRidesByRider(riderId, { limit = 10, offset = 0, status = null } = {}) {
     let sql = `SELECT r.id, r.ride_code, r.ride_status, r.final_fare, r.payment_method,
                       r.payment_status, r.booking_time, r.completed_time,
-                      pickup.address AS pickup_address, dropoff.address AS dropoff_address,
+                      rl.pickup_address, rl.drop_address AS dropoff_address,
                       dp_p.full_name AS driver_name
                FROM rides r
-               LEFT JOIN ride_locations pickup ON r.id = pickup.ride_id AND pickup.location_type = 'pickup'
-               LEFT JOIN ride_locations dropoff ON r.id = dropoff.ride_id AND dropoff.location_type = 'dropoff'
+               LEFT JOIN ride_locations rl ON r.id = rl.ride_id
                LEFT JOIN driver_profiles dp ON r.driver_id = dp.id
                LEFT JOIN profiles dp_p ON dp.profile_id = dp_p.id
                WHERE r.rider_id = ?`;

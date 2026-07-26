@@ -3,20 +3,92 @@
 
 import db from '../config/db.js';
 
+const mapPaymentMethod = (pm) => {
+  if (!pm) return 'Card';
+  const str = String(pm).trim().toLowerCase();
+  if (str.includes('cash')) return 'Cash';
+  if (str.includes('wallet')) return 'Wallet';
+  if (str.includes('upi')) return 'UPI';
+  return 'Card';
+};
+
 export const PaymentRepository = {
-  async create(data) {
-    const { rideId, payerId, amount, method, status = 'Pending', transactionId = null } = data;
+  async createPayment(data) {
+    const {
+      ride_id,
+      amount,
+      status = 'Pending',
+      payment_method = 'Card',
+      gateway = 'Razorpay',
+      gateway_order_id = null,
+      transaction_id = null,
+      response_json = null,
+    } = data;
+
+    const validMethod = mapPaymentMethod(payment_method);
+
+    // Check if a payment entry already exists for this order/ride
+    if (gateway_order_id) {
+      const existing = await this.findByOrderId(gateway_order_id);
+      if (existing) return existing.id;
+    }
+
     const [result] = await db.execute(
-      `INSERT INTO payments (ride_id, payer_id, amount, payment_method, payment_status, transaction_id, payment_time)
-       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [rideId, payerId, amount, method, status, transactionId]
+      `INSERT INTO payments (ride_id, amount, status, payment_method, gateway, gateway_order_id, transaction_id, response_json, created_time, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+      [ride_id, amount, status, validMethod, gateway, gateway_order_id, transaction_id, response_json ? JSON.stringify(response_json) : null]
     );
+
     return result.insertId;
+  },
+
+  async updatePaymentSuccess(idOrOrderId, { transaction_id, gateway_order_id = null, response_json = null }) {
+    let sql = `UPDATE payments
+               SET status = 'Success',
+                   transaction_id = COALESCE(?, transaction_id),
+                   gateway_order_id = COALESCE(?, gateway_order_id),
+                   response_json = COALESCE(?, response_json),
+                   completed_time = NOW(),
+                   updated_at = NOW() `;
+    const jsonStr = response_json ? JSON.stringify(response_json) : null;
+    const isNum = !isNaN(idOrOrderId) && Number.isInteger(Number(idOrOrderId));
+    if (isNum) {
+      sql += `WHERE id = ? OR gateway_order_id = ?`;
+      await db.execute(sql, [transaction_id, gateway_order_id, jsonStr, idOrOrderId, String(idOrOrderId)]);
+    } else {
+      sql += `WHERE gateway_order_id = ?`;
+      await db.execute(sql, [transaction_id, gateway_order_id, jsonStr, String(idOrOrderId)]);
+    }
+  },
+
+  async updatePaymentFailed(idOrOrderId, { response_json = null } = {}) {
+    let sql = `UPDATE payments
+               SET status = 'Failed',
+                   response_json = COALESCE(?, response_json),
+                   updated_at = NOW() `;
+    const jsonStr = response_json ? JSON.stringify(response_json) : null;
+    const isNum = !isNaN(idOrOrderId) && Number.isInteger(Number(idOrOrderId));
+    if (isNum) {
+      sql += `WHERE id = ? OR gateway_order_id = ?`;
+      await db.execute(sql, [jsonStr, idOrOrderId, String(idOrOrderId)]);
+    } else {
+      sql += `WHERE gateway_order_id = ?`;
+      await db.execute(sql, [jsonStr, String(idOrOrderId)]);
+    }
+  },
+
+  async findByOrderId(gatewayOrderId) {
+    if (!gatewayOrderId) return null;
+    const [rows] = await db.execute(
+      `SELECT * FROM payments WHERE gateway_order_id = ? LIMIT 1`,
+      [gatewayOrderId]
+    );
+    return rows[0] || null;
   },
 
   async findByRideId(rideId) {
     const [rows] = await db.execute(
-      `SELECT * FROM payments WHERE ride_id = ? ORDER BY payment_time DESC LIMIT 1`,
+      `SELECT * FROM payments WHERE ride_id = ? ORDER BY id DESC LIMIT 1`,
       [rideId]
     );
     return rows[0] || null;
@@ -30,32 +102,12 @@ export const PaymentRepository = {
     return rows[0] || null;
   },
 
-  async updateStatus(id, status, transactionId = null) {
-    await db.execute(
-      `UPDATE payments SET payment_status = ?, transaction_id = COALESCE(?, transaction_id), payment_time = NOW()
-       WHERE id = ?`,
-      [status, transactionId, id]
-    );
-  },
-
   async findByTransactionId(transactionId) {
     const [rows] = await db.execute(
       `SELECT * FROM payments WHERE transaction_id = ? LIMIT 1`,
       [transactionId]
     );
     return rows[0] || null;
-  },
-
-  async getPaymentsByUser(payerId, { limit = 10, offset = 0 } = {}) {
-    const [rows] = await db.execute(
-      `SELECT p.*, r.ride_code FROM payments p
-       LEFT JOIN rides r ON p.ride_id = r.id
-       WHERE p.payer_id = ?
-       ORDER BY p.payment_time DESC
-       LIMIT ? OFFSET ?`,
-      [payerId, limit, offset]
-    );
-    return rows;
   },
 };
 
