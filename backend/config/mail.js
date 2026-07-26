@@ -12,8 +12,4 @@ export const mailConfig = {
   fromEmail: process.env.SMTP_FROM_EMAIL || 'noreply@zipride.com',
 };
 
-if (!mailConfig.user || !mailConfig.pass) {
-  console.warn('[Mail Config] ⚠️  SMTP credentials not set. Emails will be logged to console only.');
-}
-
 export default mailConfig;

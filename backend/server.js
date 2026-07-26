@@ -51,6 +51,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
 // 1. Logs directory initialization
@@ -286,5 +287,5 @@ runDatabaseMigrations().catch(() => {});
 // Reload watcher trigger
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`[Express] Enterprise Server successfully started on port ${PORT}`);
+  console.log('✅ Server Started');
 });

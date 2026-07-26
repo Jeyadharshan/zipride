@@ -71,7 +71,6 @@ function resolveSslConfig() {
   const isCloudHost = MYSQL_HOST.includes('tidbcloud.com') || MYSQL_HOST.includes('aivencloud.com') || MYSQL_PORT === 4000;
 
   if (isCloudHost || isExplicitSsl || hasSslEnvVars) {
-    console.log('🔒 [db.js] Enabling SSL mode for Cloud database (minVersion: TLSv1.2).');
     return { minVersion: 'TLSv1.2', rejectUnauthorized: false };
   }
 
@@ -98,8 +97,6 @@ let pool;
 let isFallback = false;
 
 try {
-  console.log(`[db.js] Connecting to MySQL at ${MYSQL_HOST}:${MYSQL_PORT} (database: ${MYSQL_DATABASE}) …`);
-
   pool = mysql.createPool(connectionConfig);
 
   const conn = await pool.getConnection();
@@ -111,7 +108,7 @@ try {
 
   conn.release();
 
-  console.log(`✅ MySQL Connected — host: ${MYSQL_HOST}:${MYSQL_PORT}, database: ${MYSQL_DATABASE}`);
+  console.log('✅ TiDB Connected');
 
 } catch (err) {
   console.error(`❌ MySQL Connection Failed: ${err.message}`);

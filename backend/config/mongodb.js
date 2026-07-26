@@ -6,24 +6,15 @@ import mongoose from "mongoose";
 let isConnected = false;
 
 export async function connectMongoDB() {
-  const mongoUri = process.env.MONGODB_URI;
+  const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
 
-  // Check MongoDB URI
-  if (!mongoUri || mongoUri.trim() === "") {
-    const err = new Error("MONGODB_URI environment variable is missing.");
-    console.error(`❌ MongoDB Connection Failed: ${err.message}`);
-    throw err;
+  if (!mongoUri || mongoUri.trim() === '') {
+    console.warn('⚠️  MONGODB_URI environment variable is missing.');
+    return null;
   }
 
-  // Debug check (shows only first part of URI)
-  console.log(
-    "MongoDB URI loaded:",
-    mongoUri.substring(0, 30) + "..."
-  );
-
-  // Already connected
+  // Already connected singleton
   if (isConnected && mongoose.connection.readyState === 1) {
-    console.log("✅ MongoDB already connected");
     return mongoose.connection.db;
   }
 
@@ -33,20 +24,13 @@ export async function connectMongoDB() {
     });
 
     isConnected = true;
-
-    console.log("✅ MongoDB Connected Successfully");
-
+    console.log('✅ MongoDB Connected');
     return mongoose.connection.db;
 
   } catch (err) {
-
     isConnected = false;
-
-    console.error(
-      `❌ MongoDB Connection Failed: ${err.message}`
-    );
-
-    throw err;
+    console.error(`❌ MongoDB Connection Failed: ${err.message}`);
+    return null;
   }
 }
 

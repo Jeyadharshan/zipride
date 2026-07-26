@@ -15,12 +15,15 @@ const REQUIRED_VARS = [
 export const validateEnv = () => {
   const missing = [];
 
-  for (const variable of REQUIRED_VARS) {
-    const value = process.env[variable.key];
-    if (!value || value.trim() === '') {
-      missing.push(`  ❌ ${variable.key.padEnd(20)} - ${variable.description}`);
-    }
-  }
+  const checkVal = (key) => process.env[key];
+
+  if (!checkVal('MYSQL_HOST')) missing.push('  ❌ MYSQL_HOST');
+  if (!checkVal('MYSQL_PORT')) missing.push('  ❌ MYSQL_PORT');
+  if (!checkVal('MYSQL_USER')) missing.push('  ❌ MYSQL_USER');
+  if (!checkVal('MYSQL_PASSWORD')) missing.push('  ❌ MYSQL_PASSWORD');
+  if (!checkVal('MYSQL_DATABASE')) missing.push('  ❌ MYSQL_DATABASE');
+  if (!checkVal('MONGODB_URI') && !checkVal('MONGO_URI')) missing.push('  ❌ MONGODB_URI / MONGO_URI');
+  if (!checkVal('JWT_SECRET')) missing.push('  ❌ JWT_SECRET');
 
   if (missing.length > 0) {
     console.error('\n[ENV Validator] ❌ Server startup aborted — missing required environment variables:\n');
@@ -28,8 +31,6 @@ export const validateEnv = () => {
     console.error('\n[ENV Validator] Please check your environment configuration and provide all required keys.\n');
     process.exit(1);
   }
-
-  console.log('[ENV Validator] ✅ All required environment variables validated successfully.');
 };
 
 export default validateEnv;

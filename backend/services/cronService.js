@@ -5,7 +5,6 @@ import db from '../config/db.js';
 
 export const CronService = {
   initializeSchedulers() {
-    console.log('[Cron Service] Initializing background task schedulers...');
 
     // 1. Expired OTP Cleanup (Runs every hour)
     setInterval(async () => {

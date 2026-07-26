@@ -15,6 +15,8 @@ export const razorpayConfig = {
 
 if (!razorpayConfig.keyId || !razorpayConfig.keySecret) {
   console.warn('[Razorpay Config] ⚠️  RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET not set in environment.');
+} else {
+  console.log('✅ Razorpay Initialized');
 }
 
 export default razorpay;
