@@ -46,9 +46,19 @@ export function Payment() {
   const [insufficientModal, setInsufficientModal] = useState(false);
   const navigate = useNavigate();
 
-  const [rideId] = useState(localStorage.getItem("payment_ride_id") || localStorage.getItem("active_ride_id") || "");
-  const [fare, setFare] = useState(Number(localStorage.getItem("payment_amount") || TRIP.fare));
+  // Deferred to avoid SSR hydration mismatch (React #418)
+  const [rideId, setRideId] = useState("");
+  const [fare, setFare] = useState(TRIP.fare);
   const [rideDetails, setRideDetails] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const storedRideId = localStorage.getItem("payment_ride_id") || localStorage.getItem("active_ride_id") || "";
+    const storedAmount = Number(localStorage.getItem("payment_amount") || TRIP.fare);
+    setRideId(storedRideId);
+    setFare(storedAmount);
+    setMounted(true);
+  }, []);
 
   const fetchWallet = async () => {
     try {
@@ -63,6 +73,7 @@ export function Payment() {
   };
 
   useEffect(() => {
+    if (!mounted) return;
     async function fetchRide() {
       if (!rideId) return;
       try {
@@ -82,7 +93,7 @@ export function Payment() {
 
         if (data) {
           setRideDetails(data);
-          setFare(data.fare || TRIP.fare);
+          setFare(data.fare || fare);
         }
       } catch (err) {
         console.error("Failed to load payment ride details:", err);
@@ -90,7 +101,7 @@ export function Payment() {
     }
     fetchRide();
     fetchWallet();
-  }, [rideId]);
+  }, [mounted, rideId]);
 
   const handleAddMoneyInModal = async (topupAmount: number) => {
     try {

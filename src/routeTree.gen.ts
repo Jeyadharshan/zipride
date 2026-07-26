@@ -18,6 +18,7 @@ import { Route as RideTypeRouteImport } from './routes/ride-type'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RatingRouteImport } from './routes/rating'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PaymentHistoryRouteImport } from './routes/payment-history'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as OtpRouteImport } from './routes/otp'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -34,7 +35,9 @@ import { Route as CompletedRouteImport } from './routes/completed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as RiderHomeRouteImport } from './routes/rider/home'
+import { Route as DriverWalletRouteImport } from './routes/driver/wallet'
 import { Route as DriverVerificationRouteImport } from './routes/driver/verification'
+import { Route as DriverSettlementsRouteImport } from './routes/driver/settlements'
 import { Route as DriverRequestsRouteImport } from './routes/driver/requests'
 import { Route as DriverProfileRouteImport } from './routes/driver/profile'
 import { Route as DriverOtpRouteImport } from './routes/driver/otp'
@@ -43,8 +46,10 @@ import { Route as DriverEarningsRouteImport } from './routes/driver/earnings'
 import { Route as DriverDashboardRouteImport } from './routes/driver/dashboard'
 import { Route as DriverArrivedRouteImport } from './routes/driver/arrived'
 import { Route as DriverActiveRouteImport } from './routes/driver/active'
+import { Route as AdminWalletRouteImport } from './routes/admin/wallet'
 import { Route as AdminVerificationsRouteImport } from './routes/admin/verifications'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminSettlementsRouteImport } from './routes/admin/settlements'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRidesRouteImport } from './routes/admin/rides'
 import { Route as AdminRevenueRouteImport } from './routes/admin/revenue'
@@ -95,6 +100,11 @@ const RatingRoute = RatingRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentHistoryRoute = PaymentHistoryRouteImport.update({
+  id: '/payment-history',
+  path: '/payment-history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaymentRoute = PaymentRouteImport.update({
@@ -177,9 +187,19 @@ const RiderHomeRoute = RiderHomeRouteImport.update({
   path: '/rider/home',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DriverWalletRoute = DriverWalletRouteImport.update({
+  id: '/driver/wallet',
+  path: '/driver/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DriverVerificationRoute = DriverVerificationRouteImport.update({
   id: '/driver/verification',
   path: '/driver/verification',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DriverSettlementsRoute = DriverSettlementsRouteImport.update({
+  id: '/driver/settlements',
+  path: '/driver/settlements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DriverRequestsRoute = DriverRequestsRouteImport.update({
@@ -222,6 +242,11 @@ const DriverActiveRoute = DriverActiveRouteImport.update({
   path: '/driver/active',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminWalletRoute = AdminWalletRouteImport.update({
+  id: '/admin/wallet',
+  path: '/admin/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminVerificationsRoute = AdminVerificationsRouteImport.update({
   id: '/admin/verifications',
   path: '/admin/verifications',
@@ -230,6 +255,11 @@ const AdminVerificationsRoute = AdminVerificationsRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettlementsRoute = AdminSettlementsRouteImport.update({
+  id: '/admin/settlements',
+  path: '/admin/settlements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
@@ -278,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
   '/payment': typeof PaymentRoute
+  '/payment-history': typeof PaymentHistoryRoute
   '/profile': typeof ProfileRoute
   '/rating': typeof RatingRoute
   '/register': typeof RegisterRoute
@@ -293,8 +324,10 @@ export interface FileRoutesByFullPath {
   '/admin/revenue': typeof AdminRevenueRoute
   '/admin/rides': typeof AdminRidesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/settlements': typeof AdminSettlementsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verifications': typeof AdminVerificationsRoute
+  '/admin/wallet': typeof AdminWalletRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/arrived': typeof DriverArrivedRoute
   '/driver/dashboard': typeof DriverDashboardRoute
@@ -303,7 +336,9 @@ export interface FileRoutesByFullPath {
   '/driver/otp': typeof DriverOtpRoute
   '/driver/profile': typeof DriverProfileRoute
   '/driver/requests': typeof DriverRequestsRoute
+  '/driver/settlements': typeof DriverSettlementsRoute
   '/driver/verification': typeof DriverVerificationRoute
+  '/driver/wallet': typeof DriverWalletRoute
   '/rider/home': typeof RiderHomeRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -322,6 +357,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
   '/payment': typeof PaymentRoute
+  '/payment-history': typeof PaymentHistoryRoute
   '/profile': typeof ProfileRoute
   '/rating': typeof RatingRoute
   '/register': typeof RegisterRoute
@@ -337,8 +373,10 @@ export interface FileRoutesByTo {
   '/admin/revenue': typeof AdminRevenueRoute
   '/admin/rides': typeof AdminRidesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/settlements': typeof AdminSettlementsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verifications': typeof AdminVerificationsRoute
+  '/admin/wallet': typeof AdminWalletRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/arrived': typeof DriverArrivedRoute
   '/driver/dashboard': typeof DriverDashboardRoute
@@ -347,7 +385,9 @@ export interface FileRoutesByTo {
   '/driver/otp': typeof DriverOtpRoute
   '/driver/profile': typeof DriverProfileRoute
   '/driver/requests': typeof DriverRequestsRoute
+  '/driver/settlements': typeof DriverSettlementsRoute
   '/driver/verification': typeof DriverVerificationRoute
+  '/driver/wallet': typeof DriverWalletRoute
   '/rider/home': typeof RiderHomeRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -367,6 +407,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
   '/payment': typeof PaymentRoute
+  '/payment-history': typeof PaymentHistoryRoute
   '/profile': typeof ProfileRoute
   '/rating': typeof RatingRoute
   '/register': typeof RegisterRoute
@@ -382,8 +423,10 @@ export interface FileRoutesById {
   '/admin/revenue': typeof AdminRevenueRoute
   '/admin/rides': typeof AdminRidesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/settlements': typeof AdminSettlementsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verifications': typeof AdminVerificationsRoute
+  '/admin/wallet': typeof AdminWalletRoute
   '/driver/active': typeof DriverActiveRoute
   '/driver/arrived': typeof DriverArrivedRoute
   '/driver/dashboard': typeof DriverDashboardRoute
@@ -392,7 +435,9 @@ export interface FileRoutesById {
   '/driver/otp': typeof DriverOtpRoute
   '/driver/profile': typeof DriverProfileRoute
   '/driver/requests': typeof DriverRequestsRoute
+  '/driver/settlements': typeof DriverSettlementsRoute
   '/driver/verification': typeof DriverVerificationRoute
+  '/driver/wallet': typeof DriverWalletRoute
   '/rider/home': typeof RiderHomeRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -413,6 +458,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/otp'
     | '/payment'
+    | '/payment-history'
     | '/profile'
     | '/rating'
     | '/register'
@@ -428,8 +474,10 @@ export interface FileRouteTypes {
     | '/admin/revenue'
     | '/admin/rides'
     | '/admin/settings'
+    | '/admin/settlements'
     | '/admin/users'
     | '/admin/verifications'
+    | '/admin/wallet'
     | '/driver/active'
     | '/driver/arrived'
     | '/driver/dashboard'
@@ -438,7 +486,9 @@ export interface FileRouteTypes {
     | '/driver/otp'
     | '/driver/profile'
     | '/driver/requests'
+    | '/driver/settlements'
     | '/driver/verification'
+    | '/driver/wallet'
     | '/rider/home'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -457,6 +507,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/otp'
     | '/payment'
+    | '/payment-history'
     | '/profile'
     | '/rating'
     | '/register'
@@ -472,8 +523,10 @@ export interface FileRouteTypes {
     | '/admin/revenue'
     | '/admin/rides'
     | '/admin/settings'
+    | '/admin/settlements'
     | '/admin/users'
     | '/admin/verifications'
+    | '/admin/wallet'
     | '/driver/active'
     | '/driver/arrived'
     | '/driver/dashboard'
@@ -482,7 +535,9 @@ export interface FileRouteTypes {
     | '/driver/otp'
     | '/driver/profile'
     | '/driver/requests'
+    | '/driver/settlements'
     | '/driver/verification'
+    | '/driver/wallet'
     | '/rider/home'
     | '/admin'
   id:
@@ -501,6 +556,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/otp'
     | '/payment'
+    | '/payment-history'
     | '/profile'
     | '/rating'
     | '/register'
@@ -516,8 +572,10 @@ export interface FileRouteTypes {
     | '/admin/revenue'
     | '/admin/rides'
     | '/admin/settings'
+    | '/admin/settlements'
     | '/admin/users'
     | '/admin/verifications'
+    | '/admin/wallet'
     | '/driver/active'
     | '/driver/arrived'
     | '/driver/dashboard'
@@ -526,7 +584,9 @@ export interface FileRouteTypes {
     | '/driver/otp'
     | '/driver/profile'
     | '/driver/requests'
+    | '/driver/settlements'
     | '/driver/verification'
+    | '/driver/wallet'
     | '/rider/home'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -546,6 +606,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   OtpRoute: typeof OtpRoute
   PaymentRoute: typeof PaymentRoute
+  PaymentHistoryRoute: typeof PaymentHistoryRoute
   ProfileRoute: typeof ProfileRoute
   RatingRoute: typeof RatingRoute
   RegisterRoute: typeof RegisterRoute
@@ -561,8 +622,10 @@ export interface RootRouteChildren {
   AdminRevenueRoute: typeof AdminRevenueRoute
   AdminRidesRoute: typeof AdminRidesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSettlementsRoute: typeof AdminSettlementsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminVerificationsRoute: typeof AdminVerificationsRoute
+  AdminWalletRoute: typeof AdminWalletRoute
   DriverActiveRoute: typeof DriverActiveRoute
   DriverArrivedRoute: typeof DriverArrivedRoute
   DriverDashboardRoute: typeof DriverDashboardRoute
@@ -571,7 +634,9 @@ export interface RootRouteChildren {
   DriverOtpRoute: typeof DriverOtpRoute
   DriverProfileRoute: typeof DriverProfileRoute
   DriverRequestsRoute: typeof DriverRequestsRoute
+  DriverSettlementsRoute: typeof DriverSettlementsRoute
   DriverVerificationRoute: typeof DriverVerificationRoute
+  DriverWalletRoute: typeof DriverWalletRoute
   RiderHomeRoute: typeof RiderHomeRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -639,6 +704,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-history': {
+      id: '/payment-history'
+      path: '/payment-history'
+      fullPath: '/payment-history'
+      preLoaderRoute: typeof PaymentHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payment': {
@@ -753,11 +825,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RiderHomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/driver/wallet': {
+      id: '/driver/wallet'
+      path: '/driver/wallet'
+      fullPath: '/driver/wallet'
+      preLoaderRoute: typeof DriverWalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/driver/verification': {
       id: '/driver/verification'
       path: '/driver/verification'
       fullPath: '/driver/verification'
       preLoaderRoute: typeof DriverVerificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/driver/settlements': {
+      id: '/driver/settlements'
+      path: '/driver/settlements'
+      fullPath: '/driver/settlements'
+      preLoaderRoute: typeof DriverSettlementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/driver/requests': {
@@ -816,6 +902,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DriverActiveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/wallet': {
+      id: '/admin/wallet'
+      path: '/admin/wallet'
+      fullPath: '/admin/wallet'
+      preLoaderRoute: typeof AdminWalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/verifications': {
       id: '/admin/verifications'
       path: '/admin/verifications'
@@ -828,6 +921,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settlements': {
+      id: '/admin/settlements'
+      path: '/admin/settlements'
+      fullPath: '/admin/settlements'
+      preLoaderRoute: typeof AdminSettlementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/settings': {
@@ -890,6 +990,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   OtpRoute: OtpRoute,
   PaymentRoute: PaymentRoute,
+  PaymentHistoryRoute: PaymentHistoryRoute,
   ProfileRoute: ProfileRoute,
   RatingRoute: RatingRoute,
   RegisterRoute: RegisterRoute,
@@ -905,8 +1006,10 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRevenueRoute: AdminRevenueRoute,
   AdminRidesRoute: AdminRidesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminSettlementsRoute: AdminSettlementsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminVerificationsRoute: AdminVerificationsRoute,
+  AdminWalletRoute: AdminWalletRoute,
   DriverActiveRoute: DriverActiveRoute,
   DriverArrivedRoute: DriverArrivedRoute,
   DriverDashboardRoute: DriverDashboardRoute,
@@ -915,7 +1018,9 @@ const rootRouteChildren: RootRouteChildren = {
   DriverOtpRoute: DriverOtpRoute,
   DriverProfileRoute: DriverProfileRoute,
   DriverRequestsRoute: DriverRequestsRoute,
+  DriverSettlementsRoute: DriverSettlementsRoute,
   DriverVerificationRoute: DriverVerificationRoute,
+  DriverWalletRoute: DriverWalletRoute,
   RiderHomeRoute: RiderHomeRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

@@ -90,12 +90,13 @@ export function WalletPage() {
                 amount: orderAmt
               })
             });
-            if (verifyRes && verifyRes.success) {
+            const verifyData = await verifyRes.json();
+            if (verifyRes.ok && verifyData?.success) {
               alert(`✅ ₹${orderAmt} added to your ZipRide wallet successfully!`);
               setCustomAmt("");
               fetchWalletData();
             } else {
-              alert("Payment verification failed: " + (verifyRes?.message || "Invalid signature"));
+              alert("Payment verification failed: " + (verifyData?.message || "Invalid signature"));
             }
           } catch (err: any) {
             alert("Verification error: " + err.message);

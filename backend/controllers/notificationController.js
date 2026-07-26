@@ -2,32 +2,34 @@ import { NotificationService } from '../services/notificationService.js';
 
 export const NotificationController = {
   async getNotifications(req, res) {
+    // Guarantee 200 response — never return 500 for notifications
+    const safeResponse = { success: true, message: 'Notifications retrieved.', unreadCount: 0, data: [] };
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.json({
-          success: true,
-          message: 'Notifications retrieved.',
-          unreadCount: 0,
-          data: []
-        });
+        return res.json(safeResponse);
       }
-      const list = await NotificationService.getNotifications(userId);
-      const unreadCount = await NotificationService.getUnreadCount(userId);
+      let list = [];
+      let unreadCount = 0;
+      try {
+        list = await NotificationService.getNotifications(userId);
+      } catch (e) {
+        console.warn('[NotificationController] getNotifications error:', e?.message);
+      }
+      try {
+        unreadCount = await NotificationService.getUnreadCount(userId);
+      } catch (e) {
+        console.warn('[NotificationController] getUnreadCount error:', e?.message);
+      }
       return res.json({
         success: true,
         message: 'Notifications retrieved.',
-        unreadCount,
-        data: list || []
+        unreadCount: unreadCount || 0,
+        data: Array.isArray(list) ? list : []
       });
     } catch (err) {
-      console.warn('[NotificationController] Error fetching notifications:', err.message);
-      return res.json({
-        success: true,
-        message: 'Notifications retrieved.',
-        unreadCount: 0,
-        data: []
-      });
+      console.warn('[NotificationController] Outer catch:', err?.message);
+      return res.status(200).json(safeResponse);
     }
   },
 

@@ -492,7 +492,13 @@ export function Tracking() {
               </button>
             ) : (
               <button
-                onClick={() => navigate({ to: "/payment" })}
+                onClick={() => {
+                  const activeId = ride?.id || localStorage.getItem("active_ride_id") || "";
+                  const fareAmount = ride?.final_fare || ride?.estimated_fare || ride?.fare || fare || 0;
+                  localStorage.setItem("payment_ride_id", String(activeId));
+                  localStorage.setItem("payment_amount", String(fareAmount));
+                  navigate({ to: "/payment" });
+                }}
                 className="col-span-2 rounded-2xl gradient-brand py-3.5 font-extrabold text-primary-foreground shadow-glow hover:scale-[1.01] transition-transform flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>💳 Pay Now ({displayFare})</span>
