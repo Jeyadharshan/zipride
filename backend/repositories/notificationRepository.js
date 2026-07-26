@@ -5,13 +5,28 @@ import db from '../config/db.js';
 
 export const NotificationRepository = {
   async create(data) {
-    const { profileId, title, message, type = 'System' } = data;
-    const [result] = await db.execute(
-      `INSERT INTO notifications (profile_id, title, message, notification_type, is_read, created_at)
-       VALUES (?, ?, ?, ?, 0, NOW())`,
-      [profileId, title, message, type]
-    );
-    return result.insertId;
+    const { profileId, title, message, body, type = 'System' } = data;
+    const notifBody = body || message || '';
+    try {
+      const [result] = await db.execute(
+        `INSERT INTO notifications (profile_id, title, body, message, notification_type, is_read, created_at)
+         VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+        [profileId, title, notifBody, notifBody, type]
+      );
+      return result.insertId;
+    } catch (err) {
+      // Fallback: write only the columns that exist (handles schema drift)
+      try {
+        const [result2] = await db.execute(
+          `INSERT INTO notifications (profile_id, title, is_read, created_at) VALUES (?, ?, 0, NOW())`,
+          [profileId, title]
+        );
+        return result2.insertId;
+      } catch (e2) {
+        console.warn('[NotificationRepo] create fallback failed:', e2.message);
+        return null;
+      }
+    }
   },
 
   async findByProfileId(profileId, { limit = 20, offset = 0, unreadOnly = false } = {}) {

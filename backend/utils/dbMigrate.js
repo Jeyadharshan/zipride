@@ -221,6 +221,23 @@ export async function runDatabaseMigrations() {
       await db.query(`ALTER TABLE driver_settlements MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'Pending'`).catch(() => {});
     } catch (e) {}
 
+    // Ensure notifications table has required columns (message, notification_type) and body allows NULL
+    try {
+      const [notifCols] = await db.query(`SHOW COLUMNS FROM notifications`);
+      const notifColNames = new Set(notifCols.map(c => c.Field));
+      if (!notifColNames.has('message')) {
+        await db.query(`ALTER TABLE notifications ADD COLUMN message TEXT DEFAULT NULL`).catch(() => {});
+        console.log('[Migration] Added notifications.message column');
+      }
+      if (!notifColNames.has('notification_type')) {
+        await db.query(`ALTER TABLE notifications ADD COLUMN notification_type VARCHAR(50) DEFAULT NULL`).catch(() => {});
+        console.log('[Migration] Added notifications.notification_type column');
+      }
+      if (notifColNames.has('body')) {
+        await db.query(`ALTER TABLE notifications MODIFY COLUMN body TEXT DEFAULT NULL`).catch(() => {});
+      }
+    } catch (e) {}
+
     // Ensure missing columns exist in wallet_transactions
     try {
       const [wtCols] = await db.query(`SHOW COLUMNS FROM wallet_transactions`);
