@@ -9,6 +9,7 @@ import db from '../config/db.js';
 
 export const NotificationService = {
   async getNotifications(userId) {
+    if (!userId) return [];
     let mongoDocs = [];
     try {
       let mdb = getMongoDB();
@@ -22,8 +23,6 @@ export const NotificationService = {
       }
     } catch (e) {}
 
-    const mysqlDocs = await NotificationRepository.findByProfileId(userId, { limit: 50 });
-
     if (mongoDocs.length > 0) {
       return mongoDocs.map(m => ({
         id: m._id?.toString() || m.id,
@@ -36,7 +35,13 @@ export const NotificationService = {
       }));
     }
 
-    return mysqlDocs;
+    try {
+      const mysqlDocs = await NotificationRepository.findByProfileId(userId, { limit: 50 });
+      return mysqlDocs || [];
+    } catch (err) {
+      console.warn('[Notification Service] Fetch notifications failed:', err.message);
+      return [];
+    }
   },
 
   async sendPushNotification(userId, title, body, data = {}) {

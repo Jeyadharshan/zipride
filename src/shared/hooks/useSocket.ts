@@ -1,21 +1,31 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getSocket, registerSocketAuth } from "@/shared/lib/socket";
 
 export function useSocket(eventMap: Record<string, (data: any) => void>) {
+  const eventMapRef = useRef(eventMap);
+  eventMapRef.current = eventMap;
+
   useEffect(() => {
     const socket = getSocket();
     registerSocketAuth();
 
-    Object.entries(eventMap).forEach(([event, handler]) => {
-      socket.on(event, handler);
+    const handlers: Record<string, (data: any) => void> = {};
+
+    Object.keys(eventMapRef.current).forEach((event) => {
+      handlers[event] = (data: any) => {
+        if (eventMapRef.current[event]) {
+          eventMapRef.current[event](data);
+        }
+      };
+      socket.on(event, handlers[event]);
     });
 
     return () => {
-      Object.entries(eventMap).forEach(([event, handler]) => {
-        socket.off(event, handler);
+      Object.keys(handlers).forEach((event) => {
+        socket.off(event, handlers[event]);
       });
     };
-  }, [eventMap]);
+  }, []);
 }
 
 export default useSocket;
