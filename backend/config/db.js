@@ -101,9 +101,11 @@ try {
 
   const conn = await pool.getConnection();
   
-  // Ensure 'zipride' database exists if specified
+  // Ensure database exists if specified
   try {
-    await conn.query(`CREATE DATABASE IF NOT EXISTS \`zipride\``);
+    if (MYSQL_DATABASE) {
+      await conn.query(`CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\``);
+    }
   } catch (e) {}
 
   conn.release();
