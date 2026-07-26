@@ -1,12 +1,14 @@
 import { io, Socket } from "socket.io-client";
+import { API_BASE } from "@/lib/api";
 
 let socketInstance: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socketInstance) {
-    const backendUrl = window.location.hostname === "localhost"
-      ? "http://localhost:5000"
-      : window.location.origin;
+    const backendUrl =
+      typeof window !== "undefined" && window.location.hostname === "localhost"
+        ? "http://localhost:5000"
+        : API_BASE || "https://zipride-1.onrender.com";
 
     socketInstance = io(backendUrl, {
       transports: ["websocket", "polling"],

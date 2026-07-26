@@ -12,24 +12,60 @@
 //   const res = await apiFetch('/api/v1/auth/login', { method: 'POST', ... });
 
 export const API_BASE: string =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ??
-  '';
+  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ||
+  (import.meta.env.VITE_BACKEND_URL as string | undefined)?.replace(/\/$/, '') ||
+  'https://zipride-1.onrender.com';
 
 /**
  * Drop-in replacement for `fetch()` that prepends the backend base URL
  * to any path that starts with `/api` or `/uploads`, with automatic retry
  * on transient network errors (such as ERR_NETWORK_CHANGED).
  */
-export async function apiFetch(input: string, init?: RequestInit, retries = 2): Promise<Response> {
+export async function apiFetch(input: string, init?: RequestInit, retries = 2): Promise<any> {
   const url =
     input.startsWith('http://') || input.startsWith('https://')
       ? input
       : `${API_BASE}${input}`;
 
+  const token =
+    typeof window !== 'undefined'
+      ? sessionStorage.getItem('jwt_token') ||
+        localStorage.getItem('jwt_token') ||
+        localStorage.getItem('zipride_jwt_token') ||
+        ''
+      : '';
+
+  const headers = new Headers(init?.headers || {});
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  if (init?.body && typeof init.body === 'string' && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const options: RequestInit = {
+    ...init,
+    headers
+  };
+
   let attempt = 0;
   while (attempt <= retries) {
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, options);
+      
+      // If response is JSON, return parsed object for convenience when callers expect data
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json = await response.json();
+        // Attach raw ok status so caller can check response.ok or res.success
+        if (typeof json === 'object' && json !== null) {
+          json.ok = response.ok;
+          json.status = response.status;
+        }
+        return json;
+      }
+
       return response;
     } catch (err: any) {
       attempt++;
@@ -41,7 +77,7 @@ export async function apiFetch(input: string, init?: RequestInit, retries = 2): 
     }
   }
 
-  return fetch(url, init);
+  return fetch(url, options);
 }
 
 export default apiFetch;
