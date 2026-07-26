@@ -17,14 +17,30 @@ export const API_BASE: string =
 
 /**
  * Drop-in replacement for `fetch()` that prepends the backend base URL
- * to any path that starts with `/api` or `/uploads`.
- * Absolute URLs (already starting with http) are passed through unchanged.
+ * to any path that starts with `/api` or `/uploads`, with automatic retry
+ * on transient network errors (such as ERR_NETWORK_CHANGED).
  */
-export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(input: string, init?: RequestInit, retries = 2): Promise<Response> {
   const url =
     input.startsWith('http://') || input.startsWith('https://')
       ? input
       : `${API_BASE}${input}`;
+
+  let attempt = 0;
+  while (attempt <= retries) {
+    try {
+      const response = await fetch(url, init);
+      return response;
+    } catch (err: any) {
+      attempt++;
+      if (attempt > retries) {
+        throw err;
+      }
+      console.warn(`[apiFetch] Network glitch encountered (${err.message}). Retrying request (attempt ${attempt}/${retries})…`);
+      await new Promise((res) => setTimeout(res, 1000));
+    }
+  }
+
   return fetch(url, init);
 }
 
