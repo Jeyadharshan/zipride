@@ -247,7 +247,7 @@ export const WalletService = {
       await DriverRepository.releaseDriver(ride.driver_id).catch(() => {});
     }
 
-    // Send Notifications
+    // Send Notifications & Real-Time Socket.IO Broadcasts
     try {
       await NotificationService.sendPushNotification(userId, 'Payment Successful', `₹${reqAmount} paid via Wallet. Ride Completed!`).catch(() => {});
       if (ride.driver_id) {
@@ -255,6 +255,24 @@ export const WalletService = {
         const driverCut = Math.round(reqAmount * 0.85 * 100) / 100;
         await NotificationService.sendPushNotification(driverProfileId, 'Payment Received', `You received ₹${driverCut} for completed ride.`).catch(() => {});
       }
+
+      const { getIo, sendToUser, broadcastToAdmins } = await import('../socket/socket.js');
+      const io = getIo();
+      const payload = {
+        rideId,
+        amount: reqAmount,
+        paymentMethod: 'Wallet',
+        payment_status: 'Paid',
+        paymentStatus: 'Paid',
+        paidAt: new Date().toISOString()
+      };
+      if (io) {
+        io.to(`ride_${rideId}`).emit('payment-success', payload);
+        io.emit('payment-success', payload);
+      }
+      sendToUser(userId, 'payment-success', payload);
+      if (ride.driver_id) sendToUser(ride.driver_id, 'payment-success', payload);
+      broadcastToAdmins('payment-success', payload);
     } catch (e) {}
 
     return {

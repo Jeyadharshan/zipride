@@ -47,6 +47,13 @@ export function Active() {
       if (data?.paymentMethod) setPaymentMethodState(data.paymentMethod);
       if (data?.paidAt) setPaidAt(new Date(data.paidAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       else setPaidAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    },
+    "payment-pending": (data: any) => {
+      setPaymentStatus("Pending");
+      if (data?.paymentMethod) setPaymentMethodState(data.paymentMethod);
+    },
+    "payment-failed": (data: any) => {
+      setPaymentStatus("Failed");
     }
   });
 
@@ -207,6 +214,7 @@ export function Active() {
             dropoff_longitude,
             fare,
             payment_method,
+            payment_status,
             rider_id,
             driver_id,
             rider:profiles!rides_rider_id_fkey(full_name, phone, profile_image)
@@ -216,6 +224,13 @@ export function Active() {
 
         if (ride) {
           setRawRide(ride);
+          if (ride.payment_status === 'Paid' || ride.payment_status === 'Success' || ride.payment_status === 'Completed') {
+            setPaymentStatus('Paid');
+          } else if (ride.payment_status === 'Failed') {
+            setPaymentStatus('Failed');
+          } else {
+            setPaymentStatus('Pending');
+          }
           const name = ride.rider?.full_name || "Rider";
           setPassenger({
             name,

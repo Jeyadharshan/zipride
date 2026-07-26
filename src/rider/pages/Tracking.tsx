@@ -122,6 +122,16 @@ export function Tracking() {
         setIsPaid(true);
       }
     },
+    "payment-pending": (data: any) => {
+      if (!data?.rideId || String(data.rideId) === String(ride?.id || localStorage.getItem("active_ride_id"))) {
+        setIsPaid(false);
+      }
+    },
+    "payment-failed": (data: any) => {
+      if (!data?.rideId || String(data.rideId) === String(ride?.id || localStorage.getItem("active_ride_id"))) {
+        setIsPaid(false);
+      }
+    },
     "ride-completed": () => {
       navigate({ to: isPaid ? "/completed" : "/payment", replace: true });
     }
@@ -174,6 +184,7 @@ export function Tracking() {
             dropoff_longitude,
             fare,
             payment_method,
+            payment_status,
             distance,
             otp,
             rider_id,
@@ -185,6 +196,9 @@ export function Tracking() {
 
         if (rideData) {
           setRide(rideData);
+          if (rideData.payment_status === 'Paid' || rideData.payment_status === 'Success' || rideData.payment_status === 'Completed') {
+            setIsPaid(true);
+          }
           const s = (rideData.status || "").toLowerCase();
           if (s === "in_progress" || s === "ride started") {
             setStarted(true);

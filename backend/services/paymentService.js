@@ -74,6 +74,26 @@ export const PaymentService = {
 
     Logger.payment(`Created Razorpay Order ${order.id} for Ride ${rideId} (Amount: ₹${numericAmount})`);
 
+    // Broadcast payment-pending socket event to rider, driver, and admin
+    try {
+      const { getIo, sendToUser, broadcastToAdmins } = await import('../socket/socket.js');
+      const io = getIo();
+      const payload = {
+        rideId,
+        amount: numericAmount,
+        paymentMethod,
+        paymentStatus: 'Pending',
+        razorpay_order_id: order.id
+      };
+      if (io) {
+        io.to(`ride_${rideId}`).emit('payment-pending', payload);
+        io.emit('payment-pending', payload);
+      }
+      if (ride.rider_id) sendToUser(ride.rider_id, 'payment-pending', payload);
+      if (ride.driver_id) sendToUser(ride.driver_id, 'payment-pending', payload);
+      broadcastToAdmins('payment-pending', payload);
+    } catch (e) {}
+
     return {
       razorpay_order_id: order.id,
       razorpayOrderId: order.id,
@@ -127,6 +147,24 @@ export const PaymentService = {
         await RideRepository.updateStatus(targetRideId, 'Payment Pending', { payment_status: 'Pending' });
       }
 
+      // Broadcast payment-failed socket event
+      try {
+        const { getIo, sendToUser, broadcastToAdmins } = await import('../socket/socket.js');
+        const io = getIo();
+        const payload = {
+          rideId: targetRideId,
+          paymentStatus: 'Failed',
+          message: 'Payment verification failed.'
+        };
+        if (io) {
+          io.to(`ride_${targetRideId}`).emit('payment-failed', payload);
+          io.emit('payment-failed', payload);
+        }
+        if (ride?.rider_id) sendToUser(ride.rider_id, 'payment-failed', payload);
+        if (ride?.driver_id) sendToUser(ride.driver_id, 'payment-failed', payload);
+        broadcastToAdmins('payment-failed', payload);
+      } catch (e) {}
+
       return {
         success: false,
         verified: false,
@@ -160,10 +198,11 @@ export const PaymentService = {
     }
 
     // 3. Requirement #7: Verified -> Ride Status = Completed, Payment Status = Paid, Driver Status = Available, User can book another ride
+    const paidTime = new Date();
     if (targetRideId) {
       await RideRepository.updateStatus(targetRideId, 'Completed', {
         payment_status: 'Paid',
-        completed_time: new Date()
+        completed_time: paidTime
       });
 
       if (ride?.driver_id) {
@@ -174,6 +213,28 @@ export const PaymentService = {
         }
       }
     }
+
+    // Broadcast payment-success socket event to rider, driver, and admin
+    try {
+      const { getIo, sendToUser, broadcastToAdmins } = await import('../socket/socket.js');
+      const io = getIo();
+      const payload = {
+        rideId: targetRideId,
+        amount: ride?.final_fare || ride?.estimated_fare || 0,
+        paymentMethod: 'Razorpay',
+        payment_status: 'Paid',
+        paymentStatus: 'Paid',
+        paidAt: paidTime.toISOString(),
+        transactionId: razorpay_payment_id
+      };
+      if (io) {
+        io.to(`ride_${targetRideId}`).emit('payment-success', payload);
+        io.emit('payment-success', payload);
+      }
+      if (ride?.rider_id) sendToUser(ride.rider_id, 'payment-success', payload);
+      if (ride?.driver_id) sendToUser(ride.driver_id, 'payment-success', payload);
+      broadcastToAdmins('payment-success', payload);
+    } catch (e) {}
 
     return {
       success: true,

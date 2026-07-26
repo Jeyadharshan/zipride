@@ -77,6 +77,7 @@ export function AdminSettlementsPage() {
     } finally {
       setProcessingId(null);
     }
+  };
   const handleMarkPaid = async (id: number) => {
     const txnRef = prompt(`Enter Transaction Reference / Bank UTR for settlement #${id}:`);
     if (txnRef === null) return;
