@@ -39,14 +39,25 @@ const METHODS = [
 ];
 
 export function Payment() {
-  const [method, setMethod] = useState("card");
+  const [method, setMethod] = useState<"wallet" | "razorpay">("wallet");
   const [paid, setPaid] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [insufficientModal, setInsufficientModal] = useState(false);
   const navigate = useNavigate();
 
   const [rideId] = useState(localStorage.getItem("payment_ride_id") || localStorage.getItem("active_ride_id") || "");
   const [fare, setFare] = useState(Number(localStorage.getItem("payment_amount") || TRIP.fare));
   const [rideDetails, setRideDetails] = useState<any>(null);
+
+  const fetchWallet = async () => {
+    try {
+      const res = await apiFetch("/api/v1/wallet");
+      if (res && res.success && res.data) {
+        setWalletBalance(Number(res.data.available_balance ?? res.data.balance ?? 0));
+      }
+    } catch (e) {}
+  };
 
   useEffect(() => {
     async function fetchRide() {
@@ -75,21 +86,92 @@ export function Payment() {
       }
     }
     fetchRide();
+    fetchWallet();
   }, [rideId]);
 
+  const handleAddMoneyInModal = async (topupAmount: number) => {
+    try {
+      const res = await apiFetch("/api/v1/wallet/add-money", {
+        method: "POST",
+        body: JSON.stringify({ amount: topupAmount })
+      });
+      if (!res || !res.razorpay_order_id) throw new Error("Could not create Razorpay order.");
+
+      const { razorpay_order_id, amount: orderAmt, currency, key_id } = res;
+
+      if (!(window as any).Razorpay) {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((res) => (script.onload = res));
+      }
+
+      const options = {
+        key: key_id || "rzp_live_THQ2isXoSiOoDg",
+        amount: Math.round(orderAmt * 100),
+        currency: currency || "INR",
+        name: "ZipRide Wallet Topup",
+        description: `Add ₹${orderAmt} to ZipRide Wallet`,
+        order_id: razorpay_order_id,
+        handler: async function (response: any) {
+          const verifyRes = await apiFetch("/api/v1/wallet/verify-payment", {
+            method: "POST",
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              amount: orderAmt
+            })
+          });
+          if (verifyRes && verifyRes.success) {
+            alert(`✅ ₹${orderAmt} added to Wallet!`);
+            setInsufficientModal(false);
+            fetchWallet();
+          }
+        }
+      };
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (e: any) {
+      alert("Topup error: " + e.message);
+    }
+  };
+
   const pay = async () => {
-    if (method === "cash") {
-      setPaid(true);
-      setTimeout(() => navigate({ to: "/rating", replace: true }), 1400);
+    const activeRideId = rideId || "e95df18e-4a6c-486d-9be2-44161f30206a";
+    const actualFare = fare;
+
+    if (method === "wallet") {
+      setLoading(true);
+      try {
+        const res = await apiFetch("/api/v1/wallet/pay", {
+          method: "POST",
+          body: JSON.stringify({
+            rideId: activeRideId,
+            amount: actualFare
+          })
+        });
+
+        if (res && res.success) {
+          setPaid(true);
+          setTimeout(() => navigate({ to: "/rating", replace: true }), 1400);
+        } else if (res?.error === "INSUFFICIENT_WALLET_BALANCE") {
+          setInsufficientModal(true);
+        } else {
+          alert("Wallet payment failed: " + (res?.message || "Error"));
+        }
+      } catch (err: any) {
+        alert("Wallet error: " + err.message);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
+    // Razorpay direct payment
     setLoading(true);
     try {
-      const activeRideId = rideId || "e95df18e-4a6c-486d-9be2-44161f30206a";
-      const actualFare = fare;
-
-      // Load Razorpay Script
       const loaded = await loadRazorpayScript();
       if (!loaded) {
         alert("Failed to load Razorpay SDK. Please check your internet connection.");
@@ -97,7 +179,6 @@ export function Payment() {
         return;
       }
 
-      // Create Order on Backend
       const jwtToken = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token") || "";
       const orderRes = await apiFetch("/api/payment/create-order", {
         method: "POST",
@@ -124,7 +205,6 @@ export function Payment() {
         throw new Error("Razorpay Order ID was not returned by server.");
       }
 
-      // Open Razorpay Modal
       const options = {
         key: razorpayKeyId,
         amount: Math.round(actualFare * 100),
@@ -152,9 +232,6 @@ export function Payment() {
             const verifyJson = await verifyRes.json();
             if (verifyJson.success && verifyJson.verified) {
               setPaid(true);
-              localStorage.removeItem("active_ride_id");
-              localStorage.removeItem("payment_ride_id");
-              localStorage.removeItem("payment_amount");
               setTimeout(() => navigate({ to: "/rating", replace: true }), 1500);
             } else {
               alert("Payment verification failed: " + (verifyJson.message || "Invalid signature"));
@@ -175,7 +252,7 @@ export function Payment() {
           email: sessionStorage.getItem("user_email") || "rider@zipride.com",
         },
         theme: {
-          color: "#22c55e"
+          color: "#0284c7"
         }
       };
 
@@ -199,78 +276,68 @@ export function Payment() {
       <Reveal>
         <h1 className="text-2xl font-extrabold">Payment</h1>
         <div className="mt-4 rounded-3xl gradient-hero p-6 text-white shadow-elevated">
-          <p className="text-sm text-white/80">Amount to pay</p>
+          <p className="text-xs uppercase font-bold text-white/80">Amount to pay</p>
           <p className="text-4xl font-extrabold">₹{fare}.00</p>
           {rideDetails ? (
             <p className="mt-2.5 text-xs text-white/80 font-medium leading-relaxed">
               <span className="font-bold">Trip:</span> {rideDetails.pickup_address?.split(",")[0]} → {rideDetails.dropoff_address?.split(",")[0]}
-              {rideDetails.driver?.full_name && (
-                <>
-                  <br />
-                  <span className="font-bold">Driver:</span> {rideDetails.driver.full_name}
-                </>
-              )}
             </p>
           ) : (
-            <p className="mt-1 text-sm text-white/80">{TRIP.from} → AAA College</p>
+            <p className="mt-1 text-sm text-white/80">{TRIP.from} → {TRIP.to}</p>
           )}
         </div>
       </Reveal>
-
-      {rideDetails?.driver && (
-        <Reveal delay={0.04}>
-          <div className="mt-4 flex items-center justify-between rounded-2xl bg-secondary p-4 text-sm border border-border">
-            <div className="flex-1 min-w-0 pr-2">
-              <p className="font-bold text-foreground truncate">{rideDetails.driver.full_name}</p>
-              <p className="text-xs text-muted-foreground truncate">{rideDetails.driver.phone || "Driver Contact"}</p>
-            </div>
-            <button
-              onClick={() => {
-                const phoneNum = rideDetails.driver.phone || "+91 98765 43210";
-                const choice = confirm(`Driver Phone Number: ${phoneNum}\n\nClick OK to Call, or click Cancel to Copy the number.`);
-                if (choice) {
-                  window.open(`tel:${phoneNum}`, "_self");
-                } else {
-                  navigator.clipboard.writeText(phoneNum);
-                  alert("Phone number copied to clipboard!");
-                }
-              }}
-              className="flex items-center gap-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary px-3.5 py-2 font-semibold text-xs transition-colors cursor-pointer"
-            >
-              Call Driver
-            </button>
-          </div>
-        </Reveal>
-      )}
 
       <Reveal delay={0.08}>
         <p className="mb-2 mt-6 text-xs font-bold uppercase text-muted-foreground">
           Choose payment method
         </p>
-        <div className="space-y-2">
-          {METHODS.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setMethod(m.id)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition-colors cursor-pointer",
-                method === m.id ? "border-primary ring-1 ring-primary" : "border-border",
-              )}
-            >
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-secondary text-primary">
-                <m.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold">{m.label}</p>
-                <p className="text-xs text-muted-foreground">{m.sub}</p>
-              </div>
-              {method === m.id && (
-                <span className="ml-auto inline-grid h-5 w-5 place-items-center rounded-full gradient-brand text-primary-foreground">
-                  <Check className="h-3 w-3" />
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="space-y-3">
+          {/* Option 1: ZipRide Wallet */}
+          <button
+            onClick={() => setMethod("wallet")}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition-colors cursor-pointer",
+              method === "wallet" ? "border-primary ring-1 ring-primary" : "border-border",
+            )}
+          >
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Wallet className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold">ZipRide Wallet</p>
+              <p className="text-xs text-muted-foreground">
+                Available Balance: <span className="font-bold text-primary">₹{walletBalance ?? "0"}</span>
+              </p>
+            </div>
+            {method === "wallet" && (
+              <span className="inline-grid h-5 w-5 place-items-center rounded-full gradient-brand text-primary-foreground">
+                <Check className="h-3 w-3" />
+              </span>
+            )}
+          </button>
+
+          {/* Option 2: Razorpay (UPI, Credit/Debit Card, Netbanking) */}
+          <button
+            onClick={() => setMethod("razorpay")}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition-colors cursor-pointer",
+              method === "razorpay" ? "border-primary ring-1 ring-primary" : "border-border",
+            )}
+          >
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold">Razorpay Online</p>
+              <p className="text-xs text-muted-foreground">UPI, Cards, Netbanking, GPay, PhonePe</p>
+            </div>
+            {method === "razorpay" && (
+              <span className="inline-grid h-5 w-5 place-items-center rounded-full gradient-brand text-primary-foreground">
+                <Check className="h-3 w-3" />
+              </span>
+            )}
+          </button>
         </div>
       </Reveal>
 
@@ -279,11 +346,46 @@ export function Payment() {
         disabled={loading}
         className="mt-6 w-full rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow disabled:opacity-50 cursor-pointer hover:scale-[1.01] transition-transform"
       >
-        {loading ? "Processing..." : `Pay ₹${fare}`}
+        {loading ? "Processing..." : `Pay ₹${fare} with ${method === "wallet" ? "Wallet" : "Razorpay"}`}
       </button>
       <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
         <ShieldCheck className="h-3.5 w-3.5" /> 100% secure payment
       </p>
+
+      {/* Insufficient Wallet Balance Modal */}
+      {insufficientModal && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 backdrop-blur p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-card p-6 text-center shadow-elevated border border-border">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-rose-500/15 text-rose-500 mb-3">
+              <Wallet className="h-6 w-6" />
+            </div>
+            <h3 className="text-lg font-extrabold text-foreground">Insufficient Wallet Balance</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Your wallet balance (₹{walletBalance ?? 0}) is insufficient for ₹{fare} fare. Please add money to continue.
+            </p>
+            <div className="mt-5 space-y-2">
+              <button
+                onClick={() => handleAddMoneyInModal(Math.max(500, fare - (walletBalance || 0)))}
+                className="w-full rounded-xl gradient-brand py-3 text-sm font-bold text-primary-foreground shadow-glow"
+              >
+                Add Money (Razorpay)
+              </button>
+              <button
+                onClick={() => setMethod("razorpay")}
+                className="w-full rounded-xl border border-border py-2.5 text-xs font-semibold text-muted-foreground hover:bg-secondary"
+              >
+                Switch to Direct Razorpay Payment
+              </button>
+              <button
+                onClick={() => setInsufficientModal(false)}
+                className="w-full text-xs font-semibold text-muted-foreground py-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {paid && (
@@ -301,8 +403,8 @@ export function Payment() {
               <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-success/15 text-success">
                 <Check className="h-8 w-8" strokeWidth={3} />
               </div>
-              <p className="mt-4 text-xl font-extrabold">Payment successful</p>
-              <p className="text-muted-foreground">₹{fare} paid</p>
+              <p className="mt-4 text-xl font-extrabold">Payment Successful</p>
+              <p className="text-muted-foreground">₹{fare} paid via {method === "wallet" ? "ZipRide Wallet" : "Razorpay"}</p>
             </motion.div>
           </motion.div>
         )}

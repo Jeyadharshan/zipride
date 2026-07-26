@@ -160,5 +160,19 @@ export const DriverController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async getDriverWallet(req, res, next) {
+    try {
+      const { WalletRepository } = await import('../repositories/walletRepository.js');
+      const data = await WalletRepository.getDriverWallet(req.user.id);
+      return res.json({
+        success: true,
+        message: 'Driver wallet details retrieved.',
+        data
+      });
+    } catch (err) {
+      next(err);
+    }
   }
 };

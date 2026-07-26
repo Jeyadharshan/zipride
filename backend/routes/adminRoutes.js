@@ -22,6 +22,7 @@ router.delete('/user/:id', requireAuth, requireAdmin, AdminController.deleteUser
 router.get('/settings', requireAuth, requireAdmin, AdminController.getSettings);
 router.put('/settings', requireAuth, requireAdmin, AdminController.updateSetting);
 router.put('/settings/bulk', requireAuth, requireAdmin, AdminController.updateSettings);
+router.get('/wallet', requireAuth, requireAdmin, AdminController.getWalletStats);
 
 export default router;
 

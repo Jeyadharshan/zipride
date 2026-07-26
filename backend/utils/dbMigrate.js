@@ -119,6 +119,42 @@ export async function runDatabaseMigrations() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
       },
       {
+        name: 'wallet_transactions',
+        sql: `CREATE TABLE IF NOT EXISTS \`wallet_transactions\` (
+          \`id\` INT AUTO_INCREMENT NOT NULL,
+          \`wallet_id\` INT NOT NULL,
+          \`ride_id\` BIGINT DEFAULT NULL,
+          \`payment_id\` BIGINT DEFAULT NULL,
+          \`transaction_type\` VARCHAR(50) NOT NULL,
+          \`type\` VARCHAR(50) DEFAULT NULL,
+          \`amount\` DECIMAL(12,2) NOT NULL,
+          \`status\` ENUM('Success', 'Pending', 'Failed') NOT NULL DEFAULT 'Success',
+          \`description\` TEXT DEFAULT NULL,
+          \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          \`transaction_date\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (\`id\`),
+          CONSTRAINT \`fk_wallet_transactions_wallet\` FOREIGN KEY (\`wallet_id\`) REFERENCES \`wallets\` (\`id\`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+      },
+      {
+        name: 'ride_tips',
+        sql: `CREATE TABLE IF NOT EXISTS \`ride_tips\` (
+          \`id\` BIGINT AUTO_INCREMENT NOT NULL,
+          \`ride_id\` BIGINT NOT NULL,
+          \`driver_id\` INT NOT NULL,
+          \`rider_id\` CHAR(36) NOT NULL,
+          \`amount\` DECIMAL(10,2) NOT NULL,
+          \`payment_method\` VARCHAR(30) NOT NULL DEFAULT 'Wallet',
+          \`payment_status\` VARCHAR(30) NOT NULL DEFAULT 'Success',
+          \`transaction_id\` VARCHAR(100) DEFAULT NULL,
+          \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (\`id\`),
+          KEY \`idx_ride_tips_ride\` (\`ride_id\`),
+          KEY \`idx_ride_tips_driver\` (\`driver_id\`),
+          KEY \`idx_ride_tips_rider\` (\`rider_id\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+      },
+      {
         name: 'app_settings',
         sql: `CREATE TABLE IF NOT EXISTS \`app_settings\` (
           \`setting_key\` VARCHAR(50) NOT NULL,
@@ -160,6 +196,25 @@ export async function runDatabaseMigrations() {
         }
       }
       await db.query(`ALTER TABLE driver_profiles MODIFY COLUMN verification_status VARCHAR(100) NOT NULL DEFAULT 'pending'`).catch(() => {});
+    } catch (e) {}
+
+    // Ensure missing columns exist in wallet_transactions
+    try {
+      const [wtCols] = await db.query(`SHOW COLUMNS FROM wallet_transactions`);
+      const wtColNames = new Set(wtCols.map(c => c.Field));
+
+      const wtColsToAdd = [
+        { name: 'payment_id', type: 'BIGINT DEFAULT NULL' },
+        { name: 'type', type: 'VARCHAR(50) DEFAULT NULL' },
+        { name: 'status', type: "VARCHAR(30) NOT NULL DEFAULT 'Success'" },
+        { name: 'created_at', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' }
+      ];
+
+      for (const col of wtColsToAdd) {
+        if (!wtColNames.has(col.name)) {
+          await db.query(`ALTER TABLE wallet_transactions ADD COLUMN ${col.name} ${col.type}`).catch(() => {});
+        }
+      }
     } catch (e) {}
 
     // Seed default admin profile and settings if empty

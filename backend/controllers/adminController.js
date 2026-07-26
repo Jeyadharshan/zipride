@@ -680,6 +680,24 @@ export const AdminController = {
       next(err);
     }
   },
+
+  async getWalletStats(req, res, next) {
+    try {
+      const { WalletRepository } = await import('../repositories/walletRepository.js');
+      const { search, status, dateFrom, dateTo, limit, offset } = req.query;
+      const data = await WalletRepository.getAdminWalletStats({
+        search: search || '',
+        status: status || '',
+        dateFrom: dateFrom || '',
+        dateTo: dateTo || '',
+        limit: parseInt(limit) || 50,
+        offset: parseInt(offset) || 0
+      });
+      return sendSuccess(res, 'Admin wallet metrics retrieved.', data);
+    } catch (err) {
+      next(err);
+    }
+  }
 };
 
 export default AdminController;

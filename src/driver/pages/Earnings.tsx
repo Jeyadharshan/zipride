@@ -1,152 +1,97 @@
-import { formatDateIN } from "@/shared/utils/format";
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { TrendingUp, Car, Clock, Wallet, Loader2 } from "lucide-react";
+import { TrendingUp, Car, Clock, Wallet, HeartHandshake, ShieldCheck, ArrowDownToLine, Loader2 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid } from "recharts";
 import { DriverShell } from "@/driver/layouts/DriverShell";
 import { StatCard, PageHeader } from "@/shared/components/kit/Primitives";
 import { useAuth } from "@/auth/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
-
-
+import { apiFetch } from "@/lib/api";
 
 export function Earnings() {
   const { profile } = useAuth();
-  const [completedRides, setCompletedRides] = useState<any[]>([]);
+  const [driverWallet, setDriverWallet] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchEarnings() {
-      if (!profile?.id) return;
+    async function fetchDriverWallet() {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("rides")
-          .select("*")
-          .eq("driver_id", profile.id)
-          .eq("status", "completed")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setCompletedRides(data || []);
+        const res = await apiFetch("/api/v1/driver/wallet");
+        if (res && res.success && res.data) {
+          setDriverWallet(res.data);
+        }
       } catch (err) {
-        console.error("Failed to load driver earnings:", err);
+        console.error("Failed to load driver wallet details:", err);
       } finally {
         setLoading(false);
       }
     }
-    fetchEarnings();
+    fetchDriverWallet();
   }, [profile]);
 
-  
-
-  // 1. Calculations
-  const totalEarnings = completedRides.reduce((sum, r) => sum + Number(r.fare || 0), 0);
-  const totalTrips = completedRides.length;
-
-  const now = new Date();
-  
-  // This Month Earnings
-  const thisMonthRides = completedRides.filter((r) => {
-    const d = new Date(r.created_at);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
-  const thisMonthEarnings = thisMonthRides.reduce((sum, r) => sum + Number(r.fare || 0), 0);
-
-  // This Week Earnings (rides within last 7 days)
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const thisWeekRides = completedRides.filter((r) => new Date(r.created_at) >= oneWeekAgo);
-  const thisWeekEarnings = thisWeekRides.reduce((sum, r) => sum + Number(r.fare || 0), 0);
-
-  // Trips this week
-  const tripsThisWeek = thisWeekRides.length;
-
-  // 2. Chart data (group last 7 days)
-  const last7Days = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    return d;
-  }).reverse();
-
-  const chartData = last7Days.map((date) => {
-    const dayLabel = date.toLocaleDateString("en-US", { weekday: "short" });
-    const dayRides = completedRides.filter((r) => {
-      const rd = new Date(r.created_at);
-      return rd.toDateString() === date.toDateString();
-    });
-    const amt = dayRides.reduce((sum, r) => sum + Number(r.fare || 0), 0);
-    return { day: dayLabel, amt };
-  });
+  const walletBalance = Number(driverWallet?.wallet_balance || 0);
+  const totalEarnings = Number(driverWallet?.total_earnings || 0);
+  const todayEarnings = Number(driverWallet?.today_earnings || 0);
+  const weeklyEarnings = Number(driverWallet?.weekly_earnings || 0);
+  const monthlyEarnings = Number(driverWallet?.monthly_earnings || 0);
+  const tipsEarned = Number(driverWallet?.tips_earned || 0);
+  const pendingSettlement = Number(driverWallet?.pending_settlement || 0);
+  const completedRides = Number(driverWallet?.completed_rides || 0);
 
   return (
     <DriverShell>
-      <PageHeader title="Earnings" subtitle="Your income at a glance" />
+      <PageHeader title="Driver Wallet & Earnings" subtitle="Your complete income, tips earned & payout settlement" />
 
       {loading ? (
         <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span>Loading earnings metrics...</span>
+          <span>Loading driver financial metrics...</span>
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard value={`₹${thisWeekEarnings.toLocaleString()}`} label="This week" icon={<TrendingUp />} />
-            <StatCard value={`₹${thisMonthEarnings.toLocaleString()}`} label="This month" icon={<Wallet />} />
-            <StatCard value={tripsThisWeek.toString()} label="Trips this week" icon={<Car />} />
-            <StatCard value={`₹${totalEarnings.toLocaleString()}`} label="Total Earnings" icon={<Wallet />} />
-          </div>
-
-          <div className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-soft">
-            <h2 className="mb-4 font-extrabold">Weekly earnings</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis
-                    dataKey="day"
-                    stroke="var(--muted-foreground)"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "var(--secondary)" }}
-                    contentStyle={{ borderRadius: 12, border: "1px solid var(--border)" }}
-                  />
-                  <Bar dataKey="amt" radius={[8, 8, 0, 0]} fill="var(--primary)" />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Main Wallet Hero */}
+          <div className="mb-6 overflow-hidden rounded-3xl gradient-hero p-7 text-white shadow-elevated grid gap-6 md:grid-cols-2">
+            <div>
+              <p className="text-xs uppercase font-bold text-white/80 tracking-wider">Wallet Balance</p>
+              <p className="mt-1 text-4xl font-extrabold">₹{walletBalance.toLocaleString("en-IN")}.00</p>
+              <p className="text-xs text-white/80 mt-2">
+                Total Lifetime Earnings: <strong className="text-white">₹{totalEarnings.toLocaleString("en-IN")}</strong> ({completedRides} rides)
+              </p>
+            </div>
+            <div className="flex flex-col justify-between border-t md:border-t-0 md:border-l border-white/15 pt-4 md:pt-0 md:pl-6">
+              <div>
+                <p className="text-xs uppercase font-bold text-white/80 tracking-wider">Pending Settlement (Next Payout)</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-300">₹{pendingSettlement.toLocaleString("en-IN")}</p>
+              </div>
+              <p className="text-[11px] text-white/70 mt-3 flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5" /> Automated weekly payout transfer to your registered bank account
+              </p>
             </div>
           </div>
 
+          {/* Metrics Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard value={`₹${todayEarnings.toLocaleString("en-IN")}`} label="Today's Earnings" icon={<TrendingUp />} />
+            <StatCard value={`₹${weeklyEarnings.toLocaleString("en-IN")}`} label="Weekly Earnings" icon={<Wallet />} />
+            <StatCard value={`₹${monthlyEarnings.toLocaleString("en-IN")}`} label="Monthly Earnings" icon={<Wallet />} />
+            <StatCard value={`₹${tipsEarned.toLocaleString("en-IN")}`} label="Tips Earned" icon={<HeartHandshake className="text-rose-500" />} />
+          </div>
+
+          {/* Withdraw History Section */}
           <div className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-soft">
-            <h2 className="mb-4 font-extrabold">Recent Completed Trips</h2>
-            {completedRides.length === 0 ? (
-              <p className="text-center py-6 text-sm text-muted-foreground">No completed trips yet.</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {completedRides.slice(0, 10).map((r) => (
-                  <div key={r.id} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-success/15 text-success">
-                        <Car className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate max-w-[200px] sm:max-w-md font-sans">
-                          {r.pickup_address} → {r.dropoff_address}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{formatDateIN(r.created_at)}</p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 ml-3">
-                      <p className="font-bold text-success">+₹{Number(r.fare).toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground uppercase">{r.payment_method}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-extrabold text-lg flex items-center gap-2">
+                <ArrowDownToLine className="h-5 w-5 text-primary" /> Withdraw & Settlement History
+              </h2>
+              <span className="text-xs font-semibold text-muted-foreground">Auto-settled weekly</span>
+            </div>
+
+            <div className="text-center py-8 border border-dashed border-border rounded-2xl">
+              <ShieldCheck className="h-8 w-8 opacity-30 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-semibold text-foreground">Weekly Payout Active</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                Your driver earnings and tips are automatically settled directly to your registered UPI / bank account every Monday.
+              </p>
+            </div>
           </div>
         </>
       )}

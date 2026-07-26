@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Route as RouteIcon,
   TrendingUp,
+  Wallet,
   FileBarChart,
   Settings as SettingsIcon,
   LogOut,
@@ -23,6 +24,7 @@ const NAV = [
   { label: "Verifications", to: "/admin/verifications", icon: ShieldCheck },
   { label: "Rides", to: "/admin/rides", icon: RouteIcon },
   { label: "Revenue", to: "/admin/revenue", icon: TrendingUp },
+  { label: "Wallet Panel", to: "/admin/wallet", icon: Wallet },
   { label: "Reports", to: "/admin/reports", icon: FileBarChart },
   { label: "Settings", to: "/admin/settings", icon: SettingsIcon },
 ];

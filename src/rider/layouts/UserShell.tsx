@@ -11,6 +11,7 @@ const NAV = [
   { label: "Home", to: "/dashboard" },
   { label: "Bookings", to: "/history" },
   { label: "Wallet", to: "/wallet" },
+  { label: "Payments", to: "/payment-history" },
   { label: "Help", to: "/help" },
 ];
 

@@ -14,6 +14,7 @@ const docUploads = upload.fields([
 router.get('/profile', requireAuth, requireDriver, DriverController.getProfile);
 router.put('/profile', requireAuth, requireDriver, DriverController.updateProfile);
 router.get('/vehicle', requireAuth, requireDriver, DriverController.getVehicle);
+router.get('/wallet', requireAuth, requireDriver, DriverController.getDriverWallet);
 router.post('/location', requireAuth, requireVerifiedDriver, DriverController.updateLocation);
 router.post('/upload-docs', requireAuth, requireDriver, docUploads, validateDriverDocumentFiles, processUploadedFiles, DriverController.uploadDocuments);
 
