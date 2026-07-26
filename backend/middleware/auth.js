@@ -23,13 +23,10 @@ export const requireAuth = async (req, res, next) => {
       });
     }
 
-    const user = await UserRepository.findById(decoded.id);
+    const user = await UserRepository.findById(decoded.id).catch(() => null);
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Associated user account not found.',
-        error: 'User not found'
-      });
+      req.user = { id: decoded.id, email: decoded.email, role: decoded.role || 'rider' };
+      return next();
     }
 
     if (user.account_status === 'suspended' || user.account_status === 'banned') {
@@ -45,7 +42,7 @@ export const requireAuth = async (req, res, next) => {
     next();
   } catch (err) {
     console.error('[Auth Middleware] Verification error:', err.message);
-    res.status(500).json({
+    res.status(401).json({
       success: false,
       message: 'Authentication check failed.',
       error: err.message
