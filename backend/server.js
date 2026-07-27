@@ -38,6 +38,9 @@ import tipRoutes from './routes/tipRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import promoRoutes from './routes/promoRoutes.js';
+import sosRoutes from './routes/sosRoutes.js';
+import zoneRoutes from './routes/zoneRoutes.js';
 
 // Controller imports for dynamic compatibility query
 import { AdminController } from './controllers/adminController.js';
@@ -185,6 +188,7 @@ app.use('/api/v1/rider', riderRoutes);
 app.use('/api/v1/driver', driverRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/v1/rides', rideRoutes);
+app.use('/api/rides', rideRoutes);
 app.use('/api/v1/wallet', walletRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/v1/tips', tipRoutes);
@@ -195,9 +199,17 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/v1/documents', documentRoutes);
+app.use('/api/documents', documentRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
+app.use('/api/v1/promos', promoRoutes);
+app.use('/api/promos', promoRoutes);
+app.use('/api/v1/sos', sosRoutes);
+app.use('/api/sos', sosRoutes);
+app.use('/api/v1/zones', zoneRoutes);
+app.use('/api/zones', zoneRoutes);
 
 // Prepared API Version 2 route stub
 app.use('/api/v2/', (req, res) => {

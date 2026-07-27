@@ -11,14 +11,21 @@ export function formatAssetUrl(urlOrPath, fallbackName = '') {
   }
   const clean = urlOrPath.trim();
   if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) {
+    if (clean.startsWith('http://') && !clean.includes('localhost') && !clean.includes('127.0.0.1')) {
+      return clean.replace(/^http:\/\//i, 'https://');
+    }
     return clean;
   }
 
-  const baseUrl = (
+  let baseUrl = (
     process.env.BASE_URL || 
     process.env.RENDER_EXTERNAL_URL || 
     'https://zipride-1.onrender.com'
   ).replace(/\/$/, '');
+
+  if (baseUrl.startsWith('http://') && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
+    baseUrl = baseUrl.replace(/^http:\/\//i, 'https://');
+  }
 
   const relativePath = clean.startsWith('/') ? clean : `/${clean}`;
   return `${baseUrl}${relativePath}`;

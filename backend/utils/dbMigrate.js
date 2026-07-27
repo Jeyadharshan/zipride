@@ -260,6 +260,25 @@ export async function runDatabaseMigrations() {
       }
     }
 
+    // Ensure missing columns exist in profiles if table was created previously
+    try {
+      const [pCols] = await db.query(`SHOW COLUMNS FROM profiles`);
+      const pColNames = new Set(pCols.map(c => c.Field));
+      if (!pColNames.has('date_of_birth')) {
+        await db.query(`ALTER TABLE profiles ADD COLUMN date_of_birth DATE DEFAULT NULL`).catch(() => {});
+        console.log('[Migration] Added profiles.date_of_birth column');
+      }
+      if (!pColNames.has('dob')) {
+        await db.query(`ALTER TABLE profiles ADD COLUMN dob DATE DEFAULT NULL`).catch(() => {});
+      }
+      if (!pColNames.has('address')) {
+        await db.query(`ALTER TABLE profiles ADD COLUMN address TEXT DEFAULT NULL`).catch(() => {});
+      }
+      if (!pColNames.has('last_login')) {
+        await db.query(`ALTER TABLE profiles ADD COLUMN last_login DATETIME DEFAULT NULL`).catch(() => {});
+      }
+    } catch (e) {}
+
     // Ensure missing columns exist in driver_profiles if table was created previously
     try {
       const [columns] = await db.query(`SHOW COLUMNS FROM driver_profiles`);

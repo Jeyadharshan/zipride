@@ -13,8 +13,8 @@ export const initializeSocket = (httpServer) => {
       origin: '*',
       methods: ['GET', 'POST']
     },
-    pingInterval: 10000,
-    pingTimeout: 5000
+    pingInterval: 25000,
+    pingTimeout: 60000
   });
 
   io.on('connection', (socket) => {
