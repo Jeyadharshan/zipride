@@ -118,9 +118,10 @@ export function WalletPage() {
         console.warn("Backend add-money endpoint unavailable, using direct Razorpay checkout fallback:", e);
       }
 
-      // 2. Fallback Order ID generation
+      // 2. If no real Razorpay order from backend, show a clear error
+      // DO NOT pass a fake order_id to Razorpay - it will return 400 Bad Request
       if (!razorpayOrderId) {
-        razorpayOrderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        throw new Error("Wallet service is temporarily unavailable. Please try again in a moment.");
       }
 
       // 3. Preload Razorpay Script

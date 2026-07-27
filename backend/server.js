@@ -111,7 +111,7 @@ app.use(cors({
   exposedHeaders: ['X-JWT-Token'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Id', 'X-User-Role'],
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204 for OPTIONS
 }));
 
@@ -280,6 +280,19 @@ app.get('/api-docs', (req, res) => {
 // Root route
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'ZipRide Production Enterprise Server is active.' });
+});
+
+// Catch-all JSON 404 handler (prevents Express from returning HTML for unmatched routes)
+app.use((req, res, next) => {
+  // Only intercept API routes — let non-API paths fall through
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({
+      success: false,
+      message: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+      error: 'route_not_found'
+    });
+  }
+  next();
 });
 
 // Global Error Handler
