@@ -282,17 +282,23 @@ export function Tracking() {
   const displayFare = ride?.fare ? `₹${ride.fare}` : `₹${TRIP.fare}`;
   const displayPay = (ride?.payment_method || TRIP.pay).toUpperCase();
 
-  // Dynamic distinct pickup and dropoff times for Tracking page
-  const now = new Date();
-  const pickupTime = ride?.created_at ? new Date(ride.created_at) : new Date(now.getTime() - 5 * 60000);
-  const pickupTimeStr = pickupTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const [pickupTimeStr, setPickupTimeStr] = useState("10:00 AM");
+  const [dropoffTimeStr, setDropoffTimeStr] = useState("10:17 AM");
 
-  const dist = ride?.distance || 4.2;
-  const durationMins = Math.ceil(dist * 4);
-  const dropoffTime = started 
-    ? new Date(now.getTime() + 8 * 60000) 
-    : new Date(pickupTime.getTime() + (3 + durationMins) * 60000);
-  const dropoffTimeStr = dropoffTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const now = new Date();
+      const pickupTime = ride?.created_at ? new Date(ride.created_at) : new Date(now.getTime() - 5 * 60000);
+      setPickupTimeStr(pickupTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+
+      const dist = ride?.distance || 4.2;
+      const durationMins = Math.ceil(dist * 4);
+      const dropoffTime = started 
+        ? new Date(now.getTime() + 8 * 60000) 
+        : new Date(pickupTime.getTime() + (3 + durationMins) * 60000);
+      setDropoffTimeStr(dropoffTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    }
+  }, [ride?.created_at, ride?.distance, started]);
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-background">

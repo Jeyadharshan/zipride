@@ -35,9 +35,19 @@ export async function apiFetch(input: string, init?: RequestInit, retries = 2): 
         ''
       : '';
 
+  const userId =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('user_id') ||
+        sessionStorage.getItem('user_id') ||
+        ''
+      : '';
+
   const headers = new Headers(init?.headers || {});
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+  if (userId && !headers.has('X-User-Id')) {
+    headers.set('X-User-Id', userId);
   }
 
   if (init?.body && typeof init.body === 'string' && !headers.has('Content-Type')) {

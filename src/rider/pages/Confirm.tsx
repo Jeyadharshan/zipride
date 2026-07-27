@@ -32,31 +32,57 @@ export function Confirm() {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  const pickupVal = localStorage.getItem("booking_pickup") || TRIP.from;
-  const dropoffVal = localStorage.getItem("booking_dropoff") || TRIP.to;
-  const fareVal = parseInt(localStorage.getItem("booking_fare") || TRIP.fare.toString());
-  const distanceVal = parseFloat(localStorage.getItem("booking_distance") || "4.2");
+  const [pickupVal, setPickupVal] = useState(TRIP.from);
+  const [dropoffVal, setDropoffVal] = useState(TRIP.to);
+  const [fareVal, setFareVal] = useState(TRIP.fare);
+  const [distanceVal, setDistanceVal] = useState(4.2);
+  const [durationVal, setDurationVal] = useState(17);
 
-  const pickupLatVal = parseFloat(localStorage.getItem("booking_pickup_lat") || "9.4522");
-  const pickupLonVal = parseFloat(localStorage.getItem("booking_pickup_lon") || "77.9626");
-  const dropoffLatVal = parseFloat(localStorage.getItem("booking_dropoff_lat") || "9.5022");
-  const dropoffLonVal = parseFloat(localStorage.getItem("booking_dropoff_lon") || "77.9026");
+  const [pickupLatVal, setPickupLatVal] = useState(9.4522);
+  const [pickupLonVal, setPickupLonVal] = useState(77.9626);
+  const [dropoffLatVal, setDropoffLatVal] = useState(9.5022);
+  const [dropoffLonVal, setDropoffLonVal] = useState(77.9026);
 
-  const [pickupCoords] = useState<[number, number] | null>(
-    pickupLatVal && pickupLonVal ? [pickupLatVal, pickupLonVal] : null
-  );
-  const [dropoffCoords] = useState<[number, number] | null>(
-    dropoffLatVal && dropoffLonVal ? [dropoffLatVal, dropoffLonVal] : null
-  );
+  const [pickupCoords, setPickupCoords] = useState<[number, number] | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<[number, number] | null>(null);
 
-  // Calculate distinct pickup and dropoff times
-  const now = new Date();
-  const pickupTime = new Date(now.getTime() + 3 * 60000);
-  const pickupTimeStr = pickupTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const [pickupTimeStr, setPickupTimeStr] = useState("10:00 AM");
+  const [dropoffTimeStr, setDropoffTimeStr] = useState("10:17 AM");
 
-  const durationVal = parseInt(localStorage.getItem("booking_duration") || Math.ceil(distanceVal * 4).toString());
-  const dropoffTime = new Date(pickupTime.getTime() + durationVal * 60000);
-  const dropoffTimeStr = dropoffTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const pVal = localStorage.getItem("booking_pickup") || TRIP.from;
+      const dVal = localStorage.getItem("booking_dropoff") || TRIP.to;
+      const fVal = parseInt(localStorage.getItem("booking_fare") || TRIP.fare.toString());
+      const distVal = parseFloat(localStorage.getItem("booking_distance") || "4.2");
+      const durVal = parseInt(localStorage.getItem("booking_duration") || Math.ceil(distVal * 4).toString());
+
+      const pLat = parseFloat(localStorage.getItem("booking_pickup_lat") || "9.4522");
+      const pLon = parseFloat(localStorage.getItem("booking_pickup_lon") || "77.9626");
+      const dLat = parseFloat(localStorage.getItem("booking_dropoff_lat") || "9.5022");
+      const dLon = parseFloat(localStorage.getItem("booking_dropoff_lon") || "77.9026");
+
+      setPickupVal(pVal);
+      setDropoffVal(dVal);
+      setFareVal(fVal);
+      setDistanceVal(distVal);
+      setDurationVal(durVal);
+
+      setPickupLatVal(pLat);
+      setPickupLonVal(pLon);
+      setDropoffLatVal(dLat);
+      setDropoffLonVal(dLon);
+
+      setPickupCoords([pLat, pLon]);
+      setDropoffCoords([dLat, dLon]);
+
+      const now = new Date();
+      const pTime = new Date(now.getTime() + 3 * 60000);
+      setPickupTimeStr(pTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      const dTime = new Date(pTime.getTime() + durVal * 60000);
+      setDropoffTimeStr(dTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    }
+  }, []);
 
   // If user has an active ride, redirect them away from confirm to the active ride
   useEffect(() => {

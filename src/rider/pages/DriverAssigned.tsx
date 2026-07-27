@@ -19,16 +19,20 @@ export function DriverAssigned() {
   const [fareVal, setFareVal] = useState(TRIP.fare);
   const [payMethod, setPayMethod] = useState(TRIP.pay);
 
-  const [pickupCoords, setPickupCoords] = useState<[number, number] | null>(() => {
-    const lat = localStorage.getItem("booking_pickup_lat");
-    const lon = localStorage.getItem("booking_pickup_lon");
-    return lat && lon ? [Number(lat), Number(lon)] : null;
-  });
-  const [dropoffCoords, setDropoffCoords] = useState<[number, number] | null>(() => {
-    const lat = localStorage.getItem("booking_dropoff_lat");
-    const lon = localStorage.getItem("booking_dropoff_lon");
-    return lat && lon ? [Number(lat), Number(lon)] : null;
-  });
+  const [pickupCoords, setPickupCoords] = useState<[number, number] | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<[number, number] | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const latP = localStorage.getItem("booking_pickup_lat");
+      const lonP = localStorage.getItem("booking_pickup_lon");
+      if (latP && lonP) setPickupCoords([Number(latP), Number(lonP)]);
+
+      const latD = localStorage.getItem("booking_dropoff_lat");
+      const lonD = localStorage.getItem("booking_dropoff_lon");
+      if (latD && lonD) setDropoffCoords([Number(latD), Number(lonD)]);
+    }
+  }, []);
 
   const fetchOtpAndDriver = async (rideId: string) => {
     try {
