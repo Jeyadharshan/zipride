@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { ArrowLeft, Circle, MapPin, Banknote, Smartphone, Wallet, Tag, Check, HelpCircle } from "lucide-react";
+import { ArrowLeft, Circle, MapPin, Tag } from "lucide-react";
 import { UserShell } from "@/rider/layouts/UserShell";
 import { Reveal } from "@/shared/components/kit/Reveal";
 import { TRIP } from "@/shared/constants/zip-data";
@@ -122,16 +122,7 @@ export function Confirm() {
     loadWallet();
   }, [profile]);
 
-  const PAYMENTS = [
-    { id: "cash", label: "Cash", sub: "Pay on arrival", icon: Banknote },
-    { id: "upi", label: "UPI", sub: "arun@upi", icon: Smartphone },
-    { 
-      id: "wallet", 
-      label: "ZipWallet", 
-      sub: walletBalance !== null ? `₹${walletBalance.toLocaleString()} balance` : "Loading balance...", 
-      icon: Wallet 
-    },
-  ];
+
 
   const handleConfirm = async () => {
     if (!profile?.id) {
@@ -145,10 +136,6 @@ export function Confirm() {
     }
     if (dropoffCoords && (dropoffCoords[0] < 8.0 || dropoffCoords[0] > 14.0 || dropoffCoords[1] < 76.0 || dropoffCoords[1] > 80.5)) {
       alert("ZipRide only operates within Tamil Nadu, India. Please select a dropoff location in Tamil Nadu.");
-      return;
-    }
-    if (pay === "wallet" && walletBalance !== null && walletBalance < fareVal) {
-      alert("Insufficient wallet balance. Please add money to your wallet or choose another payment method.");
       return;
     }
     setBooking(true);
@@ -189,7 +176,7 @@ export function Confirm() {
         fare: fareVal,
         distance: distanceVal,
         duration: durationVal,
-        payment_method: pay,
+        payment_method: "cash",
         payment_status: "pending" as const,
         otp: rideOtp,
       };
@@ -324,36 +311,7 @@ export function Confirm() {
       </Reveal>
 
       <Reveal delay={0.08}>
-        <p className="mb-2 mt-6 text-xs font-bold uppercase text-muted-foreground">
-          Payment method
-        </p>
-        <div className="space-y-2">
-          {PAYMENTS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPay(p.id)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition-colors",
-                pay === p.id ? "border-primary ring-1 ring-primary" : "border-border",
-              )}
-            >
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-secondary text-primary">
-                <p.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold">{p.label}</p>
-                <p className="text-xs text-muted-foreground">{p.sub}</p>
-              </div>
-              {pay === p.id && (
-                <span className="ml-auto inline-grid h-5 w-5 place-items-center rounded-full gradient-brand text-primary-foreground animate-scale-in">
-                  <Check className="h-3 w-3" />
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
+        <div className="mt-6 flex items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
           <Tag className="h-5 w-5 text-primary" />
           <input
             placeholder="Add promo code"

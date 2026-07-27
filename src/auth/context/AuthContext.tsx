@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from "firebase/auth";
 import { auth as firebaseAuth } from "@/lib/firebase/config";
 import type { Profile } from "@/shared/types";
+import { registerSocketAuth } from "@/shared/lib/socket";
 
 interface AuthContextType {
   user: (FirebaseUser & { id: string }) | null;
@@ -129,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setProfile(userProfile);
+      registerSocketAuth(userProfile.id, userProfile.role);
       console.log("[Supabase Load Profile] Loaded user profile:", userProfile);
       console.log("[Supabase Load Profile] Generated Supabase UUID:", userProfile.id);
 

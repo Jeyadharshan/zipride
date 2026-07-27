@@ -8,6 +8,7 @@ import { DRIVER, TRIP } from "@/shared/constants/zip-data";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/hooks/useAuth";
+import { getSocket } from "@/shared/lib/socket";
 
 
 
@@ -101,6 +102,9 @@ export function DriverAssigned() {
   useEffect(() => {
     async function initDriverAssigned() {
       let rideId = localStorage.getItem("active_ride_id");
+      if (rideId) {
+        getSocket().emit("ride:join", { rideId });
+      }
 
       if (!rideId && profile?.id) {
         try {

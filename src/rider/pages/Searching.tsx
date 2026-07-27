@@ -6,6 +6,7 @@ import { MapCanvas } from "@/map/components/MapCanvas";
 import { TRIP } from "@/shared/constants/zip-data";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/hooks/useAuth";
+import { getSocket } from "@/shared/lib/socket";
 
 
 
@@ -19,6 +20,9 @@ export function Searching() {
   useEffect(() => {
     async function loadRideData() {
       let rideId = localStorage.getItem("active_ride_id");
+      if (rideId) {
+        getSocket().emit("ride:join", { rideId });
+      }
 
       // Recover active ride ID from database if missing in localStorage
       if (!rideId && profile?.id) {

@@ -594,46 +594,8 @@ export function Active() {
                 </div>
                 <div className="mt-4 flex justify-between rounded-xl bg-secondary p-3 text-sm">
                   <span className="text-muted-foreground">Fare</span>
-                  <span className="font-bold">
-                    ₹{rideDetails.fare} · Pay by {rideDetails.paymentMethod.toUpperCase()}
-                  </span>
+                  <span className="font-bold">₹{rideDetails.fare}</span>
                 </div>
-              </div>
-              {/* Live Payment Status Card */}
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-soft space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Payment Status</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-extrabold ${paymentStatus === 'Paid' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                    {paymentStatus === 'Paid'
-                      ? "🟢 Rider Already Paid"
-                      : (rideDetails.paymentMethod?.toLowerCase() === 'cash' ? "🟠 Cash Payment Pending" : "🟠 Waiting for Rider Payment")}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 py-2 text-center bg-secondary/40 rounded-xl p-3">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-semibold">Amount</p>
-                    <p className="font-extrabold text-sm text-foreground">₹{rideDetails.fare}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-semibold">Method</p>
-                    <p className="font-bold text-xs text-foreground uppercase">{paymentMethodState || rideDetails.paymentMethod}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-semibold">Paid At</p>
-                    <p className="font-bold text-xs text-foreground">{paidAt || "--"}</p>
-                  </div>
-                </div>
-
-                {paymentStatus !== 'Paid' && (rideDetails.paymentMethod?.toLowerCase() === 'cash' || paymentMethodState.toLowerCase() === 'cash') && (
-                  <button
-                    onClick={handleCollectCash}
-                    disabled={collectingCash}
-                    className="w-full rounded-xl gradient-brand py-3 font-extrabold text-xs text-primary-foreground shadow-glow hover:scale-[1.01] transition-transform cursor-pointer"
-                  >
-                    {collectingCash ? "Collecting..." : "💵 Cash Collected"}
-                  </button>
-                )}
               </div>
 
               <button
@@ -658,15 +620,11 @@ export function Active() {
               </button>
               <button
                 onClick={() => {
-                  if (paymentStatus === "Paid") {
-                    setShowRating(true);
-                  } else {
-                    setShowPayment(true);
-                  }
+                  setShowRating(true);
                 }}
                 className="w-full rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow cursor-pointer"
               >
-                {paymentStatus === "Paid" ? "Ride Completed (Rating Passenger) ✓" : "Arrived at Destination"}
+                Arrived at Destination
               </button>
             </>
           )}

@@ -18,6 +18,7 @@ import { DRIVER, TRIP } from "@/shared/constants/zip-data";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/hooks/useAuth";
 import { useSocket } from "@/shared/hooks/useSocket";
+import { getSocket } from "@/shared/lib/socket";
 import { motion } from "motion/react";
 
 
@@ -142,6 +143,9 @@ export function Tracking() {
   useEffect(() => {
     async function initTracking() {
       let rideId = localStorage.getItem("active_ride_id");
+      if (rideId) {
+        getSocket().emit("ride:join", { rideId });
+      }
 
       if (!rideId && profile?.id) {
         try {
@@ -473,38 +477,9 @@ export function Tracking() {
             <Row label="Distance" value={displayDistance} />
             <Row label="Time" value={`~${displayTime}`} />
             <Row label="Fare" value={displayFare} />
-            <Row label="Payment Method" value={displayPay} />
-            <div className="flex justify-between items-center pt-2 border-t border-border/50">
-              <span className="text-muted-foreground font-medium">Payment Status</span>
-              <span className={`font-extrabold text-xs px-2.5 py-1 rounded-full ${isPaid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                {isPaid ? "🟢 Payment Completed" : "🟠 Payment Pending"}
-              </span>
-            </div>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
-            {isPaid ? (
-              <button
-                disabled
-                className="col-span-2 rounded-2xl bg-emerald-500/20 text-emerald-600 py-3.5 font-extrabold text-center flex items-center justify-center gap-2 cursor-not-allowed"
-              >
-                <span>🟢 Payment Completed</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  const activeId = ride?.id || localStorage.getItem("active_ride_id") || "";
-                  const fareAmount = ride?.final_fare || ride?.estimated_fare || ride?.fare || fare || 0;
-                  localStorage.setItem("payment_ride_id", String(activeId));
-                  localStorage.setItem("payment_amount", String(fareAmount));
-                  navigate({ to: "/payment" });
-                }}
-                className="col-span-2 rounded-2xl gradient-brand py-3.5 font-extrabold text-primary-foreground shadow-glow hover:scale-[1.01] transition-transform flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>💳 Pay Now ({displayFare})</span>
-              </button>
-            )}
-
             <button className={`rounded-2xl bg-destructive py-3 font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors ${started ? "col-span-2" : ""}`}>
               🆘 Emergency SOS
             </button>

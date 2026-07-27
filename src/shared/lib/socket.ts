@@ -32,13 +32,15 @@ export const getSocket = (): Socket => {
   return socketInstance;
 };
 
-export const registerSocketAuth = () => {
+export const registerSocketAuth = (userId?: string, role?: string) => {
   if (socketInstance && socketInstance.connected) {
-    const userId = localStorage.getItem("user_id") || sessionStorage.getItem("user_id");
-    const role = localStorage.getItem("user_role") || sessionStorage.getItem("user_role") || "rider";
+    const activeUserId = userId || localStorage.getItem("user_id") || sessionStorage.getItem("user_id");
+    const activeRole = role || localStorage.getItem("user_role") || sessionStorage.getItem("user_role") || "rider";
 
-    if (userId) {
-      socketInstance.emit("auth:register", { userId, profileId: userId, role });
+    if (activeUserId) {
+      localStorage.setItem("user_id", activeUserId);
+      localStorage.setItem("user_role", activeRole);
+      socketInstance.emit("auth:register", { userId: activeUserId, profileId: activeUserId, role: activeRole });
     }
   }
 };
