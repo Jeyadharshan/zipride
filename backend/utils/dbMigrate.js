@@ -180,6 +180,72 @@ export async function runDatabaseMigrations() {
           \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (\`setting_key\`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+      },
+      {
+        name: 'notifications',
+        sql: `CREATE TABLE IF NOT EXISTS \`notifications\` (
+          \`id\` INT AUTO_INCREMENT NOT NULL,
+          \`profile_id\` CHAR(36) NOT NULL,
+          \`title\` VARCHAR(255) NOT NULL,
+          \`body\` TEXT DEFAULT NULL,
+          \`message\` TEXT DEFAULT NULL,
+          \`notification_type\` VARCHAR(50) DEFAULT 'System',
+          \`is_read\` TINYINT(1) NOT NULL DEFAULT 0,
+          \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (\`id\`),
+          KEY \`idx_notifications_profile\` (\`profile_id\`),
+          KEY \`idx_notifications_read\` (\`is_read\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+      },
+      {
+        name: 'rides',
+        sql: `CREATE TABLE IF NOT EXISTS \`rides\` (
+          \`id\` BIGINT AUTO_INCREMENT NOT NULL,
+          \`rider_id\` CHAR(36) NOT NULL,
+          \`driver_id\` INT DEFAULT NULL,
+          \`driver_profile_id\` CHAR(36) DEFAULT NULL,
+          \`pickup_address\` TEXT DEFAULT NULL,
+          \`dropoff_address\` TEXT DEFAULT NULL,
+          \`pickup_lat\` DECIMAL(10,7) DEFAULT NULL,
+          \`pickup_lng\` DECIMAL(10,7) DEFAULT NULL,
+          \`dropoff_lat\` DECIMAL(10,7) DEFAULT NULL,
+          \`dropoff_lng\` DECIMAL(10,7) DEFAULT NULL,
+          \`ride_status\` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+          \`payment_status\` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+          \`payment_method\` VARCHAR(50) DEFAULT 'Cash',
+          \`estimated_fare\` DECIMAL(10,2) DEFAULT NULL,
+          \`final_fare\` DECIMAL(10,2) DEFAULT NULL,
+          \`distance_km\` DECIMAL(8,3) DEFAULT NULL,
+          \`duration_min\` INT DEFAULT NULL,
+          \`vehicle_type\` VARCHAR(50) DEFAULT NULL,
+          \`pickup_time\` DATETIME DEFAULT NULL,
+          \`completed_time\` DATETIME DEFAULT NULL,
+          \`cancelled_time\` DATETIME DEFAULT NULL,
+          \`cancel_reason\` TEXT DEFAULT NULL,
+          \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (\`id\`),
+          KEY \`idx_rides_rider\` (\`rider_id\`),
+          KEY \`idx_rides_driver\` (\`driver_id\`),
+          KEY \`idx_rides_status\` (\`ride_status\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+      },
+      {
+        name: 'payments',
+        sql: `CREATE TABLE IF NOT EXISTS \`payments\` (
+          \`id\` BIGINT AUTO_INCREMENT NOT NULL,
+          \`ride_id\` BIGINT DEFAULT NULL,
+          \`amount\` DECIMAL(10,2) NOT NULL,
+          \`status\` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+          \`payment_method\` VARCHAR(50) DEFAULT 'Cash',
+          \`gateway\` VARCHAR(50) DEFAULT NULL,
+          \`gateway_order_id\` VARCHAR(100) DEFAULT NULL,
+          \`transaction_id\` VARCHAR(100) DEFAULT NULL,
+          \`created_time\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+          \`completed_time\` DATETIME DEFAULT NULL,
+          PRIMARY KEY (\`id\`),
+          KEY \`idx_payments_ride\` (\`ride_id\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
       }
     ];
 
