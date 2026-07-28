@@ -69,6 +69,21 @@ const corsOptions = {
 // Enable CORS and parsing of JSON/url-encoded bodies
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+// Explicit CORS preflight and header fallback middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin || 'https://zipride-khaki.vercel.app';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-User-Id, X-User-Role, x-user-id, x-user-role, x-role, X-Role, Accept, Origin, X-JWT-Token, x-jwt-token');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Expose-Headers', 'X-JWT-Token');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
