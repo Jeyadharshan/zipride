@@ -72,6 +72,24 @@ export const AdminController = {
     }
   },
 
+  async getAnalytics(req, res, next) {
+    try {
+      const stats = await AdminRepository.getDashboardStats();
+      const analyticsData = {
+        totalRides: stats?.totalRides || 0,
+        totalRevenue: stats?.totalRevenue || 0,
+        completedRides: stats?.completedRides || 0,
+        activeDrivers: getOnlineDriverCount(),
+        onlineDrivers: getOnlineDriverCount(),
+        totalUsers: stats?.totalRiders || 0,
+        totalDrivers: stats?.totalDrivers || 0,
+      };
+      return sendSuccess(res, 'Analytics data retrieved.', analyticsData);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async getUsers(req, res, next) {
     try {
       const { page, limit, offset, search, status, order } = parsePagination(req.query);
@@ -790,5 +808,34 @@ export const AdminController = {
     }
   }
 };
+
+export const executeQuery = AdminController.executeQuery;
+export const getDashboardStats = AdminController.getDashboardStats;
+export const getAnalytics = AdminController.getAnalytics;
+export const getUsers = AdminController.getUsers;
+export const getPendingDrivers = AdminController.getPendingDrivers;
+export const getDriversList = AdminController.getDriversList;
+export const getDriverVerifications = AdminController.getDriverVerifications;
+export const getDriverDocuments = AdminController.getDriverDocuments;
+export const approveDriver = AdminController.approveDriver;
+export const rejectDriver = AdminController.rejectDriver;
+export const deleteDriver = AdminController.deleteDriver;
+export const blockUser = AdminController.blockUser;
+export const unblockUser = AdminController.unblockUser;
+export const deleteUser = AdminController.deleteUser;
+export const getRides = AdminController.getRides;
+export const getReportData = AdminController.getReportData;
+export const getSettings = AdminController.getSettings;
+export const updateSetting = AdminController.updateSetting;
+export const updateSettings = AdminController.updateSettings;
+export const getWalletStats = AdminController.getWalletStats;
+export const getSettlements = AdminController.getSettlements;
+export const approveSettlement = AdminController.approveSettlement;
+export const rejectSettlement = AdminController.rejectSettlement;
+export const markSettlementPaid = AdminController.markSettlementPaid;
+export const getMySQLBackup = AdminController.getMySQLBackup;
+export const getMongoBackup = AdminController.getMongoBackup;
+export const restoreBackup = AdminController.restoreBackup;
+export const exportData = AdminController.exportData;
 
 export default AdminController;
