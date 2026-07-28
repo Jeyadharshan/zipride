@@ -40,14 +40,7 @@ const ALLOWED_ORIGINS = [
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    const allowed =
-      ALLOWED_ORIGINS.includes(origin) ||
-      /^https:\/\/zipride(-[\w-]+)?\.vercel\.app$/.test(origin);
-    if (allowed) {
-      callback(null, origin);
-    } else {
-      callback(null, true); // fallback for local/dev
-    }
+    callback(null, origin);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -64,7 +57,10 @@ const corsOptions = {
     'Accept',
     'Origin',
     'X-JWT-Token',
-    'x-jwt-token'
+    'x-jwt-token',
+    'Access-Control-Allow-Headers',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
   ],
   exposedHeaders: ['X-JWT-Token'],
   optionsSuccessStatus: 200,

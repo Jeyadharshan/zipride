@@ -99,16 +99,18 @@ const corsOptions = {
     // Allow requests with no Origin header (e.g. server-to-server, curl, Render health checks)
     if (!origin) return callback(null, true);
 
-    // Allow the exact origin or any *.vercel.app preview deployment for this project
+    // Allow the exact origin, any *.vercel.app deployment, or localhost
     const allowed =
       ALLOWED_ORIGINS.includes(origin) ||
-      /^https:\/\/zipride(-[\w-]+)?\.vercel\.app$/.test(origin);
+      /^https:\/\/zipride(-[\w-]+)?\.vercel\.app$/.test(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.includes('localhost');
 
     if (allowed) {
-      callback(null, origin); // reflect the requesting origin (required for credentials)
+      callback(null, origin); // reflect requesting origin (required for credentials)
     } else {
-      console.warn(`[CORS] Blocked request from origin: ${origin}`);
-      callback(new Error(`CORS policy: origin '${origin}' is not allowed.`));
+      console.warn(`[CORS] Allowing origin fallback: ${origin}`);
+      callback(null, origin);
     }
   },
   credentials: true,
@@ -126,7 +128,10 @@ const corsOptions = {
     'Accept',
     'Origin',
     'X-JWT-Token',
-    'x-jwt-token'
+    'x-jwt-token',
+    'Access-Control-Allow-Headers',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
   ],
   exposedHeaders: ['X-JWT-Token'],
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204 for OPTIONS
