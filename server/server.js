@@ -29,12 +29,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Allowed origins: comma-separated list from env, plus production Vercel & local origins
+// Allowed origins: comma-separated list from env, plus production Vercel & local development origins
 const ALLOWED_ORIGINS = [
-  ...(process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
   'https://zipride-khaki.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',
+  ...(process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
 ];
 
 const corsOptions = {
@@ -42,48 +42,37 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     callback(null, origin);
   },
-  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
     'Authorization',
     'X-Requested-With',
-    'X-User-Id',
-    'X-User-Role',
-    'x-user-id',
-    'x-user-role',
-    'x-role',
-    'X-Role',
     'Accept',
     'Origin',
+    'x-user-id',
+    'x-profile-id',
+    'x-session-id',
+    'X-User-Id',
+    'X-Profile-Id',
+    'X-Session-Id',
+    'X-User-Role',
+    'x-user-role',
+    'X-Role',
+    'x-role',
     'X-JWT-Token',
     'x-jwt-token',
     'Access-Control-Allow-Headers',
     'Access-Control-Request-Method',
     'Access-Control-Request-Headers'
   ],
-  exposedHeaders: ['X-JWT-Token'],
+  exposedHeaders: ['Authorization', 'X-JWT-Token'],
+  credentials: true,
   optionsSuccessStatus: 200,
 };
 
 // Enable CORS and parsing of JSON/url-encoded bodies
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-
-// Explicit CORS preflight and header fallback middleware
-app.use((req, res, next) => {
-  const origin = req.headers.origin || 'https://zipride-khaki.vercel.app';
-  res.header('Access-Control-Allow-Origin', origin);
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-User-Id, X-User-Role, x-user-id, x-user-role, x-role, X-Role, Accept, Origin, X-JWT-Token, x-jwt-token');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Expose-Headers', 'X-JWT-Token');
-
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
