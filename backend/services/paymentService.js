@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
+import { getRazorpay } from '../config/razorpay.js';
 import { PaymentRepository } from '../repositories/paymentRepository.js';
 import { RideRepository } from '../repositories/rideRepository.js';
 import { DriverRepository } from '../repositories/driverRepository.js';
@@ -8,15 +8,15 @@ import Logger from '../utils/logger.js';
 
 dotenv.config();
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
 export const PaymentService = {
   async createOrder(rideId, amount, paymentMethod = 'Razorpay') {
     if (!rideId || amount === undefined || amount === null || Number(amount) <= 0) {
       throw new Error('Valid Ride ID and positive Amount are required.');
+    }
+
+    const razorpay = getRazorpay();
+    if (!razorpay) {
+      throw new Error("Razorpay is not configured.");
     }
 
     const numericAmount = Number(amount);

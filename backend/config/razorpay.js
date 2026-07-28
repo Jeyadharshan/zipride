@@ -1,30 +1,35 @@
 import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
-let razorpay = null;
+let hasWarned = false;
 
-try {
-  if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-    razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-    console.log('✅ Razorpay Initialized');
-  } else {
-    console.warn('[Razorpay Config] ⚠️  RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET not set — Razorpay features disabled.');
+export function getRazorpay() {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    if (!hasWarned) {
+      console.warn('[Razorpay Config] ⚠️ RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is missing. Razorpay payment functionality will be disabled.');
+      hasWarned = true;
+    }
+    return null;
   }
-} catch (err) {
-  console.error('[Razorpay Config] ❌ Failed to initialize Razorpay:', err.message);
-  razorpay = null;
+
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
 }
 
-export { razorpay };
-
 export const razorpayConfig = {
-  keyId: process.env.RAZORPAY_KEY_ID || '',
-  keySecret: process.env.RAZORPAY_KEY_SECRET || '',
-  webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
+  get keyId() {
+    return process.env.RAZORPAY_KEY_ID || '';
+  },
+  get keySecret() {
+    return process.env.RAZORPAY_KEY_SECRET || '';
+  },
+  get webhookSecret() {
+    return process.env.RAZORPAY_WEBHOOK_SECRET || '';
+  },
 };
 
-export default razorpay;
+export default getRazorpay;

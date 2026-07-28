@@ -2,7 +2,7 @@
 // Complete Wallet Service with Razorpay Add Money, HMAC verification, Pay with Wallet, and Push Notifications.
 
 import crypto from 'crypto';
-import razorpay from '../config/razorpay.js';
+import { getRazorpay } from '../config/razorpay.js';
 import db from '../config/db.js';
 import { WalletRepository } from '../repositories/walletRepository.js';
 import { RideRepository } from '../repositories/rideRepository.js';
@@ -30,26 +30,30 @@ export const WalletService = {
       throw new Error('User wallet not found.');
     }
 
+    const razorpay = getRazorpay();
+    if (!razorpay) {
+      throw new Error("Razorpay is not configured.");
+    }
+
     const amountInPaise = Math.round(parsedAmount * 100);
     const receipt = `wrecharge_${wallet.id}_${Date.now()}`;
 
     let orderId = null;
     try {
-      if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-        const order = await razorpay.orders.create({
-          amount: amountInPaise,
-          currency: 'INR',
-          receipt,
-          notes: {
-            userId,
-            walletId: wallet.id,
-            purpose: 'Wallet Recharge'
-          }
-        });
-        orderId = order.id;
-      }
+      const order = await razorpay.orders.create({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt,
+        notes: {
+          userId,
+          walletId: wallet.id,
+          purpose: 'Wallet Recharge'
+        }
+      });
+      orderId = order.id;
     } catch (err) {
       console.warn('[WalletService] Razorpay order creation warning:', err.message);
+      throw new Error(`Razorpay Order creation failed: ${err.message}`);
     }
 
     if (!orderId) {

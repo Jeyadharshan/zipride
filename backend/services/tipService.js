@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import db from '../config/db.js';
-import razorpay from '../config/razorpay.js';
+import { getRazorpay } from '../config/razorpay.js';
 import { WalletRepository } from '../repositories/walletRepository.js';
 import { RideRepository } from '../repositories/rideRepository.js';
 import { NotificationService } from './notificationService.js';
@@ -89,6 +89,10 @@ export const TipService = {
     } else if (paymentMethod === 'Razorpay') {
       // If creating order
       if (!razorpay_payment_id) {
+        const razorpay = getRazorpay();
+        if (!razorpay) {
+          throw new Error("Razorpay is not configured.");
+        }
         const amountInPaise = Math.round(tipAmount * 100);
         const order = await razorpay.orders.create({
           amount: amountInPaise,
