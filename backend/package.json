@@ -1,0 +1,48 @@
+{
+  "name": "zipride-production-backend",
+  "version": "1.0.0",
+  "description": "Production Express + MySQL 8 + Socket.IO backend for ZipRide",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "npx cross-env NODE_OPTIONS=--experimental-vm-modules npx jest --testPathPatterns=tests/ --forceExit",
+    "test:auth": "npx cross-env NODE_OPTIONS=--experimental-vm-modules npx jest tests/auth.test.js --forceExit",
+    "test:ride": "npx cross-env NODE_OPTIONS=--experimental-vm-modules npx jest tests/ride.test.js --forceExit",
+    "seed": "node scripts/seed.js",
+    "backup": "node scripts/backupDatabase.js",
+    "db:clear": "node scripts/clearDatabase.js",
+    "db:clear-riders": "node scripts/clearRiders.js",
+    "db:clear-drivers": "node scripts/clearDrivers.js",
+    "export:users": "node scripts/exportUsers.js",
+    "export:drivers": "node scripts/exportDrivers.js",
+    "export:rides": "node scripts/exportRides.js"
+  },
+  "jest": {
+    "transform": {},
+    "testEnvironment": "node"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "express-validator": "^7.1.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^7.5.0",
+    "mongoose": "^9.8.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.9.8",
+    "nodemailer": "^6.9.13",
+    "razorpay": "^2.9.2",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "49f1c8dd-e1f4-4be0-9749-a81f4bf40f83": {
+    "profile_photo_url": "/uploads/profile_1784036034963_1759337802029.jpg",
+    "updated_at": "2026-07-14T13:34:05.986Z",
+    "license_image_url": "/uploads/license_1784036035093_1759338123042.jpg"
+  },
+  "d6d7c750-4e06-432e-82f3-031089154545": {
+    "profile_photo_url": "/uploads/profile_1784047894123_IMG_20250801_150916_723 (3).jpg",
+    "updated_at": "2026-07-14T16:51:44.756Z",
+    "license_image_url": "/uploads/license_1784047894241_1759337802029.jpg"
+  },
+  "ce07cd22-a97b-4311-993f-1f1ac12c6768": {
+    "driverId": 14,
+    "profileId": "ce07cd22-a97b-4311-993f-1f1ac12c6768",
+    "driverName": "selva",
+    "phone": "+911234567890",
+    "email": "selava@123",
+    "licenseNumber": "DRV-LIC-94347273",
+    "profilePhoto": "/uploads/1784294347207_aadhar1.png",
+    "drivingLicense": "/uploads/1784294347263_Screenshot_2025-11-10_190819.png",
+    "verificationStatus": "approved",
+    "approvedBy": "da5a038e-4969-4fda-9076-0dd49bac66d2",
+    "approvedAt": "2026-07-17T13:20:02.722Z",
+    "rejectedReason": null,
+    "createdAt": "2026-07-17T13:19:16.856Z",
+    "updatedAt": "2026-07-17T13:20:02.722Z"
+  },
+  "1f9913d3-0241-461e-b5a3-3897ed458375": {
+    "driverId": 15,
+    "profileId": "1f9913d3-0241-461e-b5a3-3897ed458375",
+    "driverName": "mithun",
+    "phone": "9342116440",
+    "email": "mithunmithu12@gmail.com",
+    "licenseNumber": "DRV-LIC-54279964",
+    "profilePhoto": "/uploads/1784554279853_IMG_20250801_150916_723_(3).jpg",
+    "drivingLicense": "/uploads/1784554279944_aadhar1.png",
+    "verificationStatus": "approved",
+    "approvedBy": "da5a038e-4969-4fda-9076-0dd49bac66d2",
+    "approvedAt": "2026-07-20T14:50:42.483Z",
+    "rejectedReason": null,
+    "createdAt": "2026-07-20T13:31:29.204Z",
+    "updatedAt": "2026-07-20T14:50:42.483Z"
+  },
+  "ab8f24e1-e1da-49b1-97da-31a490d92cb9": {
+    "driverId": 16,
+    "profileId": "ab8f24e1-e1da-49b1-97da-31a490d92cb9",
+    "driverName": "gurusami",
+    "phone": "+919342664664",
+    "email": "gurusami123@gmail.com",
+    "licenseNumber": "DRV-LIC-62467351",
+    "profilePhoto": "/uploads/1784562467259_IMG_20250801_150916_723_(2).jpg",
+    "drivingLicense": "/uploads/1784562467335_1759337802029.jpg",
+    "verificationStatus": "approved",
+    "approvedBy": "da5a038e-4969-4fda-9076-0dd49bac66d2",
+    "approvedAt": "2026-07-20T15:57:51.556Z",
+    "rejectedReason": null,
+    "createdAt": "2026-07-20T15:47:55.447Z",
+    "updatedAt": "2026-07-20T15:57:51.556Z"
+  },
+  "ca8d9157-7804-435b-ad6f-c26dc555c7b8": {
+    "driverId": 19,
+    "profileId": "ca8d9157-7804-435b-ad6f-c26dc555c7b8",
+    "driverName": "madh",
+    "phone": "+91 9845555555",
+    "email": "madhu12@gmail.com",
+    "licenseNumber": "TN 67",
+    "profilePhoto": "/uploads/1784567747047_WhatsApp_Image_2025-10-16_at_18.44.22_f9df1bf6.jpg",
+    "drivingLicense": "/uploads/1784567747163_1759337802029.jpg",
+    "verificationStatus": "approved",
+    "approvedBy": "da5a038e-4969-4fda-9076-0dd49bac66d2",
+    "approvedAt": "2026-07-20T17:42:14.493Z",
+    "rejectedReason": null,
+    "createdAt": "2026-07-20T17:15:55.283Z",
+    "updatedAt": "2026-07-20T17:42:14.493Z"
+  }
+}
