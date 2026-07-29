@@ -13,6 +13,19 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    build: {
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ["react", "react-dom"],
+            icons: ["lucide-react"],
+            leaflet: ["leaflet", "react-leaflet"],
+            socket: ["socket.io-client"],
+          },
+        },
+      },
+    },
     resolve: {
       dedupe: ["react", "react-dom", "@tanstack/react-router"],
     },
