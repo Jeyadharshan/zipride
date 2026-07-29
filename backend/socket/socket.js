@@ -13,8 +13,17 @@ export const initializeSocket = (httpServer) => {
       origin: '*',
       methods: ['GET', 'POST']
     },
+    // Accept both polling and websocket — order matters for Render proxy.
+    // Polling is used first to establish the connection, then upgraded to WS.
+    transports: ['polling', 'websocket'],
+    allowUpgrades: true,
+    // Backward-compatible with socket.io-client v3
+    allowEIO3: true,
+    // Tuned for Render free tier (cold start + proxy read timeout)
     pingInterval: 25000,
-    pingTimeout: 60000
+    pingTimeout: 60000,
+    // Give slow proxies time to complete the WebSocket upgrade
+    upgradeTimeout: 10000,
   });
 
   io.on('connection', (socket) => {
