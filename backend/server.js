@@ -289,7 +289,11 @@ app.get('/api-docs', (req, res) => {
   `);
 });
 
-// Root route
+// Root route + fast wake-up health check (no auth required — used by frontend to wake Render)
+app.get('/health', (req, res) => {
+  res.json({ success: true, status: 'ok', uptime: Math.round(process.uptime()) });
+});
+
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'ZipRide Production Enterprise Server is active.' });
 });
