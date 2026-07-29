@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { AtSign, Lock, ArrowRight, ShieldCheck, Star, Eye, EyeOff } from "lucide-react";
 import { LogoMark, Logo } from "@/shared/components/brand/Logo";
 import { Reveal } from "@/shared/components/kit/Reveal";
-import { supabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
 import { registerSocketAuth } from "@/shared/lib/socket";
 
@@ -54,6 +53,7 @@ export function Login() {
 
     setLoading(true);
     try {
+      // Hash password with sha256 — backend stores bcrypt(sha256(password))
       const passwordHash = await hashPassword(password);
       const identifier = username.trim().toLowerCase();
 
@@ -62,169 +62,57 @@ export function Login() {
       sessionStorage.removeItem("driver_session");
       sessionStorage.removeItem("admin_session");
 
-      // 1. Fetch profiles by matching username, email, or phone
-      let profile: any = null;
-      let fetchError: any = null;
+      // Single backend call — backend handles username/email/phone lookup + bcrypt comparison
+      const loginRes = await apiFetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: identifier, password: passwordHash })
+      });
 
-      // Check by username
-      const { data: usernameProfile, error: usernameError } = await (supabase as any)
-        .from("profiles")
-        .select("id, full_name, role, account_status, username, email, phone")
-        .eq("username", identifier)
-        .eq("password_hash", passwordHash)
-        .maybeSingle();
+      const loginData = await loginRes.json();
 
-      if (usernameError) fetchError = usernameError;
-      profile = usernameProfile;
-
-      // Check by email
-      if (!profile) {
-        const { data: emailProfile, error: emailError } = await (supabase as any)
-          .from("profiles")
-          .select("id, full_name, role, account_status, username, email, phone")
-          .eq("email", identifier)
-          .eq("password_hash", passwordHash)
-          .maybeSingle();
-
-        if (emailError) fetchError = emailError;
-        profile = emailProfile;
-      }
-
-      // Check by phone
-      if (!profile) {
-        const { data: phoneProfile, error: phoneError } = await (supabase as any)
-          .from("profiles")
-          .select("id, full_name, role, account_status, username, email, phone")
-          .eq("phone", identifier)
-          .eq("password_hash", passwordHash)
-          .maybeSingle();
-
-        if (phoneError) fetchError = phoneError;
-        profile = phoneProfile;
-      }
-
-      if (fetchError) throw new Error(fetchError.message);
-
-      if (!profile) {
-        // Check if account has been deleted (exists in waste table)
-        let deletedProfile = null;
-        const { data: d1 } = await (supabase as any).from("waste").select("id").eq("username", identifier).maybeSingle();
-        if (d1) deletedProfile = d1;
-        if (!deletedProfile) {
-          const { data: d2 } = await (supabase as any).from("waste").select("id").eq("email", identifier).maybeSingle();
-          if (d2) deletedProfile = d2;
+      // Handle error responses
+      if (!loginRes.ok) {
+        if (loginRes.status === 403) {
+          alert(loginData.message || "Access denied.");
+        } else if (loginRes.status === 401) {
+          alert(loginData.message || "Invalid username or password. Please try again.");
+        } else {
+          alert(loginData.message || "Login failed. Please try again.");
         }
-        if (!deletedProfile) {
-          const { data: d3 } = await (supabase as any).from("waste").select("id").eq("phone", identifier).maybeSingle();
-          if (d3) deletedProfile = d3;
-        }
-
-        if (deletedProfile) {
-          alert("This account was deleted.");
-          setLoading(false);
-          return;
-        }
-
-        // Look up by identifier again to see if user has been locked due to failed attempts
-        let existingProfile = null;
-        const { data: e1 } = await (supabase as any).from("profiles").select("id").eq("username", identifier).maybeSingle();
-        if (e1) existingProfile = e1;
-        if (!existingProfile) {
-          const { data: e2 } = await (supabase as any).from("profiles").select("id").eq("email", identifier).maybeSingle();
-          if (e2) existingProfile = e2;
-        }
-        if (!existingProfile) {
-          const { data: e3 } = await (supabase as any).from("profiles").select("id").eq("phone", identifier).maybeSingle();
-          if (e3) existingProfile = e3;
-        }
-
-        if (existingProfile) {
-          // Trigger backend direct login with wrong password to hit lockout tracker and log failed attempt
-          const res = await apiFetch("/api/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: identifier, password: "wrong_password" })
-          });
-          const data = await res.json();
-          if (res.status === 403) {
-            alert(data.message);
-            setLoading(false);
-            return;
-          }
-        }
-        alert("Invalid username or password. Please try again.");
         setLoading(false);
         return;
       }
 
-      if (profile.account_status === "suspended" || profile.account_status === "banned") {
-        alert("Your account has been suspended. Please contact support.");
+      const profile = loginData?.data?.user;
+      if (!profile) {
+        alert("Unexpected server response. Please try again.");
         setLoading(false);
         return;
       }
 
-      // 2. Driver verification check
-      if (profile.role === "driver") {
-        const { data: driverProfile, error: driverErr } = await (supabase as any)
-          .from("driver_profiles")
-          .select("verification_status")
-          .eq("profile_id", profile.id)
-          .maybeSingle();
-
-        if (driverErr) throw new Error(driverErr.message);
-
-        if (driverProfile) {
-          if (driverProfile.verification_status !== "approved" && driverProfile.verification_status !== "Approved") {
-            const sessionKey = `${profile.role}_session`;
-            const sessionValue = JSON.stringify({
-              id: profile.id,
-              full_name: profile.full_name,
-              role: profile.role,
-              username: profile.username,
-              email: profile.email,
-              phone: profile.phone,
-              profile_image: profile.avatar_url || ""
-            });
-
-            sessionStorage.setItem(sessionKey, sessionValue);
-
-            if (rememberMe) {
-              localStorage.setItem("zipride_remembered_username", username.trim());
-              localStorage.setItem(`zipride_${profile.role}_session_backup`, sessionValue);
-            } else {
-              localStorage.removeItem("zipride_remembered_username");
-              localStorage.removeItem(`zipride_${profile.role}_session_backup`);
-            }
-
-            // Hit login log route and navigate to verification screen
-            await apiFetch("/api/auth/login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ username: identifier, password })
-            });
-
-            navigate({ to: "/driver/verification", replace: true });
-            setLoading(false);
-            return;
-          }
-        }
-      }
-
-      // 3. Save session details
+      // Store session details
       const sessionKey = `${profile.role}_session`;
       const sessionValue = JSON.stringify({
         id: profile.id,
-        full_name: profile.full_name,
+        full_name: profile.fullName,
         role: profile.role,
         username: profile.username,
         email: profile.email,
         phone: profile.phone,
-        profile_image: profile.avatar_url || ""
+        profile_image: loginData?.data?.profilePhoto || loginData?.data?.profile_photo_url || ""
       });
 
       sessionStorage.setItem(sessionKey, sessionValue);
       localStorage.setItem("user_id", profile.id);
       localStorage.setItem("user_role", profile.role);
+
+      // Store backend JWT
+      if (loginData?.data?.token) {
+        sessionStorage.setItem("jwt_token", loginData.data.token);
+        localStorage.setItem("jwt_token", loginData.data.token);
+      }
+
       registerSocketAuth(profile.id, profile.role);
 
       if (rememberMe) {
@@ -235,20 +123,17 @@ export function Login() {
         localStorage.removeItem(`zipride_${profile.role}_session_backup`);
       }
 
-      // 4. Hit server login route to write successful audit + capture JWT
-      const loginRes = await apiFetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: identifier, password })
-      });
-      const loginData = await loginRes.json();
-      // Store backend JWT for authenticated REST API calls (admin endpoints, etc.)
-      if (loginData?.data?.token) {
-        sessionStorage.setItem("jwt_token", loginData.data.token);
-        localStorage.setItem("jwt_token", loginData.data.token);
+      // Driver verification check — backend already returned verificationStatus
+      if (profile.role === "driver") {
+        const verificationStatus = (loginData?.data?.verificationStatus || "").toLowerCase();
+        if (verificationStatus !== "approved") {
+          navigate({ to: "/driver/verification", replace: true });
+          setLoading(false);
+          return;
+        }
       }
 
-      // 5. Navigate to dashboard based on role (replace so back button doesn't return to login)
+      // Navigate to dashboard based on role
       if (profile.role === "rider") {
         navigate({ to: "/rider/home", replace: true });
       } else if (profile.role === "driver") {
@@ -258,6 +143,7 @@ export function Login() {
       }
     } catch (err: any) {
       alert("Login failed: " + err.message);
+    } finally {
       setLoading(false);
     }
   };
