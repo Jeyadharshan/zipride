@@ -135,29 +135,34 @@ export function Verifications() {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setAll(
-          json.data.map((d: any) => ({
-            id: d.driver_id,
-            profileId: d.profile_id,
-            name: d.full_name || "Unknown Driver",
-            phone: d.phone || "—",
-            email: d.email || "—",
-            licenseNumber: d.license_number || "Not provided",
-            driverCode: d.driver_code || "—",
-            car: d.vehicle_make
-              ? `${d.vehicle_color || ""} ${d.vehicle_make} ${d.vehicle_model}`.trim()
-              : null,
-            plate: d.license_plate || null,
-            verificationStatus: (d.verification_status || "Pending"),
-            profilePhotoUrl: resolveAssetUrl(d.profile_photo_url),
-            licenseImageUrl: resolveAssetUrl(d.license_image_url),
-            submittedAt: d.created_at
-              ? new Date(d.created_at).toLocaleDateString("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "—",
-          }))
+          json.data.map((d: any) => {
+            const rawProfilePhoto = d.profile_photo_url || d.profile_photo || d.profile_avatar || d.direct_profile_photo || d.mysql_profile_photo || null;
+            const rawLicensePhoto = d.license_image_url || d.license_photo || d.direct_license_photo || d.mysql_license_photo || null;
+
+            return {
+              id: d.driver_id,
+              profileId: d.profile_id,
+              name: d.full_name || "Unknown Driver",
+              phone: d.phone || "—",
+              email: d.email || "—",
+              licenseNumber: d.license_number || "Not provided",
+              driverCode: d.driver_code || "—",
+              car: d.vehicle_make
+                ? `${d.vehicle_color || ""} ${d.vehicle_make} ${d.vehicle_model}`.trim()
+                : null,
+              plate: d.license_plate || null,
+              verificationStatus: (d.verification_status || "Pending"),
+              profilePhotoUrl: resolveAssetUrl(rawProfilePhoto),
+              licenseImageUrl: resolveAssetUrl(rawLicensePhoto),
+              submittedAt: d.created_at
+                ? new Date(d.created_at).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—",
+            };
+          })
         );
       } else {
         throw new Error("Unexpected response format");
