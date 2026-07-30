@@ -15,7 +15,8 @@ const MYSQL_HOST     = process.env.MYSQL_HOST     || 'gateway01.ap-southeast-1.p
 const MYSQL_PORT     = Number(process.env.MYSQL_PORT) || 4000;
 const MYSQL_USER     = process.env.MYSQL_USER     || 'cBAXK2TmpioAcwS.root';
 const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || '9B7vqd4Ze5YvGkUV';
-const MYSQL_DATABASE = process.env.MYSQL_DATABASE || 'zipride';
+const rawDb = process.env.MYSQL_DATABASE || 'zipride';
+const MYSQL_DATABASE = (!rawDb || rawDb === 'github_sample') ? 'zipride' : rawDb;
 
 /**
  * Resolves SSL configuration for TiDB Cloud / Aiven / Standard MySQL.

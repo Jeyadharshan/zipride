@@ -191,72 +191,97 @@ export const AdminRepository = {
       statusFilter = `AND LOWER(r.ride_status) IN ('ride completed', 'completed')`;
     }
 
-    // Summary stats
-    const [[summary]] = await db.query(
-      `SELECT COUNT(*) AS total_rides,
-              SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN 1 ELSE 0 END) AS completed,
-              SUM(CASE WHEN LOWER(r.ride_status) IN ('cancelled', 'canceled') THEN 1 ELSE 0 END) AS cancelled,
-              SUM(CASE WHEN LOWER(r.ride_status) NOT IN ('ride completed', 'completed', 'cancelled', 'canceled') THEN 1 ELSE 0 END) AS pending,
-              COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) ELSE 0 END), 0) AS revenue,
-              COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) * 0.10 ELSE 0 END), 0) AS admin_commission,
-              COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) * 0.90 ELSE 0 END), 0) AS driver_earnings
-       FROM rides r WHERE 1=1 ${dateWhere}`,
-      dateParams
-    );
+    let summary = {};
+    try {
+      const [[sRow]] = await db.query(
+        `SELECT COUNT(*) AS total_rides,
+                SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN LOWER(r.ride_status) IN ('cancelled', 'canceled') THEN 1 ELSE 0 END) AS cancelled,
+                SUM(CASE WHEN LOWER(r.ride_status) NOT IN ('ride completed', 'completed', 'cancelled', 'canceled') THEN 1 ELSE 0 END) AS pending,
+                COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) ELSE 0 END), 0) AS revenue,
+                COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) * 0.10 ELSE 0 END), 0) AS admin_commission,
+                COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) * 0.90 ELSE 0 END), 0) AS driver_earnings
+         FROM rides r WHERE 1=1 ${dateWhere}`,
+        dateParams
+      );
+      if (sRow) summary = sRow;
+    } catch (err) {
+      console.warn('[AdminRepository.getReportData] summary query warning:', err.message);
+    }
 
-    // Wallet stats
-    const [[walletStats]] = await db.query(
-      `SELECT COALESCE(SUM(CASE WHEN transaction_type = 'Credit' THEN amount ELSE 0 END), 0) AS total_credits,
-              COALESCE(SUM(CASE WHEN transaction_type = 'Debit' THEN amount ELSE 0 END), 0) AS total_debits
-       FROM wallet_transactions`
-    );
+    let walletStats = { total_credits: 0, total_debits: 0 };
+    try {
+      const [[wRow]] = await db.query(
+        `SELECT COALESCE(SUM(CASE WHEN transaction_type = 'Credit' THEN amount ELSE 0 END), 0) AS total_credits,
+                COALESCE(SUM(CASE WHEN transaction_type = 'Debit' THEN amount ELSE 0 END), 0) AS total_debits
+         FROM wallet_transactions`
+      );
+      if (wRow) walletStats = wRow;
+    } catch (err) {
+      console.warn('[AdminRepository.getReportData] walletStats query warning:', err.message);
+    }
 
-    // Ride details
-    const [rides] = await db.query(
-      `SELECT r.id, r.ride_code, r.ride_status, r.final_fare, r.estimated_fare, r.payment_method,
-              r.payment_status, r.booking_time, r.completed_time, r.cancellation_reason,
-              r.ride_type, r.actual_distance,
-              rl.pickup_address, rl.drop_address AS dropoff_address,
-              rp.full_name AS rider_name, rp.phone AS rider_phone,
-              dp_p.full_name AS driver_name
-       FROM rides r
-       LEFT JOIN profiles rp ON r.rider_id = rp.id
-       LEFT JOIN driver_profiles dp ON r.driver_id = dp.id
-       LEFT JOIN profiles dp_p ON dp.profile_id = dp_p.id
-       LEFT JOIN ride_locations rl ON r.id = rl.ride_id
-       WHERE 1=1 ${dateWhere} ${statusFilter}
-       ORDER BY r.booking_time DESC
-       LIMIT 1000`,
-      dateParams
-    );
+    let rides = [];
+    try {
+      const [rRows] = await db.query(
+        `SELECT r.id, r.ride_code, r.ride_status, r.final_fare, r.estimated_fare, r.payment_method,
+                r.payment_status, r.booking_time, r.completed_time, r.cancellation_reason,
+                r.ride_type, r.actual_distance,
+                rl.pickup_address, rl.drop_address AS dropoff_address,
+                rp.full_name AS rider_name, rp.phone AS rider_phone,
+                dp_p.full_name AS driver_name
+         FROM rides r
+         LEFT JOIN profiles rp ON r.rider_id = rp.id
+         LEFT JOIN driver_profiles dp ON r.driver_id = dp.id
+         LEFT JOIN profiles dp_p ON dp.profile_id = dp_p.id
+         LEFT JOIN ride_locations rl ON r.id = rl.ride_id
+         WHERE 1=1 ${dateWhere} ${statusFilter}
+         ORDER BY r.booking_time DESC
+         LIMIT 1000`,
+        dateParams
+      );
+      if (Array.isArray(rRows)) rides = rRows;
+    } catch (err) {
+      console.warn('[AdminRepository.getReportData] rides query warning:', err.message);
+    }
 
-    // Driver earnings breakdown
-    const [driverEarnings] = await db.query(
-      `SELECT dp_p.full_name AS driver_name, dp_p.phone AS driver_phone, dp.online_seconds AS online_seconds,
-              COUNT(r.id) AS total_rides,
-              COALESCE(SUM(COALESCE(r.final_fare, r.estimated_fare, 0)), 0) AS gross_earnings,
-              COALESCE(SUM(COALESCE(r.final_fare, r.estimated_fare, 0) * 0.90), 0) AS net_earnings
-       FROM rides r
-       LEFT JOIN driver_profiles dp ON r.driver_id = dp.id
-       LEFT JOIN profiles dp_p ON dp.profile_id = dp_p.id
-       WHERE LOWER(r.ride_status) IN ('ride completed', 'completed') ${dateWhere}
-       GROUP BY r.driver_id, dp_p.full_name, dp_p.phone, dp.online_seconds
-       ORDER BY net_earnings DESC
-       LIMIT 100`,
-      dateParams
-    );
+    let driverEarnings = [];
+    try {
+      const [dRows] = await db.query(
+        `SELECT dp_p.full_name AS driver_name, dp_p.phone AS driver_phone, dp.online_seconds AS online_seconds,
+                COUNT(r.id) AS total_rides,
+                COALESCE(SUM(COALESCE(r.final_fare, r.estimated_fare, 0)), 0) AS gross_earnings,
+                COALESCE(SUM(COALESCE(r.final_fare, r.estimated_fare, 0) * 0.90), 0) AS net_earnings
+         FROM rides r
+         LEFT JOIN driver_profiles dp ON r.driver_id = dp.id
+         LEFT JOIN profiles dp_p ON dp.profile_id = dp_p.id
+         WHERE LOWER(r.ride_status) IN ('ride completed', 'completed') ${dateWhere}
+         GROUP BY r.driver_id, dp_p.full_name, dp_p.phone, dp.online_seconds
+         ORDER BY net_earnings DESC
+         LIMIT 100`,
+        dateParams
+      );
+      if (Array.isArray(dRows)) driverEarnings = dRows;
+    } catch (err) {
+      console.warn('[AdminRepository.getReportData] driverEarnings query warning:', err.message);
+    }
 
-    // Wallet transactions
-    const [walletTransactions] = await db.query(
-      `SELECT wt.id, wt.amount, wt.transaction_type, wt.type, wt.description, wt.status,
-              COALESCE(wt.transaction_date, wt.created_at) AS date,
-              p.full_name AS user_name, p.phone AS user_phone, p.role AS user_role
-       FROM wallet_transactions wt
-       LEFT JOIN wallets w ON wt.wallet_id = w.id
-       LEFT JOIN profiles p ON w.profile_id = p.id
-       ORDER BY COALESCE(wt.transaction_date, wt.created_at) DESC
-       LIMIT 500`
-    );
+    let walletTransactions = [];
+    try {
+      const [wtRows] = await db.query(
+        `SELECT wt.id, wt.amount, wt.transaction_type, wt.type, wt.description, wt.status,
+                COALESCE(wt.transaction_date, wt.created_at) AS date,
+                p.full_name AS user_name, p.phone AS user_phone, p.role AS user_role
+         FROM wallet_transactions wt
+         LEFT JOIN wallets w ON wt.wallet_id = w.id
+         LEFT JOIN profiles p ON w.profile_id = p.id
+         ORDER BY COALESCE(wt.transaction_date, wt.created_at) DESC
+         LIMIT 500`
+      );
+      if (Array.isArray(wtRows)) walletTransactions = wtRows;
+    } catch (err) {
+      console.warn('[AdminRepository.getReportData] walletTransactions query warning:', err.message);
+    }
 
     return { summary, walletStats, rides, driverEarnings, walletTransactions };
   },
