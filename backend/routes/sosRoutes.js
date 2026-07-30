@@ -1,7 +1,8 @@
 // backend/routes/sosRoutes.js
 import express from 'express';
 import { SosController } from '../controllers/sosController.js';
-import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/admin.js';
 
 const router = express.Router();
 

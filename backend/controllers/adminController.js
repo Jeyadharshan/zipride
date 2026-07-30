@@ -72,6 +72,15 @@ export const AdminController = {
     }
   },
 
+  async getAnalytics(req, res, next) {
+    try {
+      const stats = await AdminRepository.getDashboardStats();
+      return sendSuccess(res, 'Analytics retrieved.', stats);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async getUsers(req, res, next) {
     try {
       const { page, limit, offset, search, status, order } = parsePagination(req.query);

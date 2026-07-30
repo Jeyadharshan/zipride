@@ -1,7 +1,8 @@
 // backend/routes/zoneRoutes.js
 import express from 'express';
 import { ZoneController } from '../controllers/zoneController.js';
-import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/admin.js';
 
 const router = express.Router();
 

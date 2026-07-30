@@ -1,5 +1,8 @@
 import { verifyAccessToken } from '../config/jwt.js';
 import { UserRepository } from '../repositories/userRepository.js';
+import { requireAdmin } from './admin.js';
+
+export { requireAdmin };
 
 export const requireAuth = async (req, res, next) => {
   try {
