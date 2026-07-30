@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/")(({
-  head: () => ({ meta: [{ title: "Redirecting — ZipRide" }] }),
+  head: () => ({ meta: [{ title: "ZipRide — Fast, Reliable & Safe Rides" }] }),
   component: SplashRedirect,
 }));
 
