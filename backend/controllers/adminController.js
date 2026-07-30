@@ -146,8 +146,9 @@ export const AdminController = {
         try {
           mongoDocs = await MongoService.getDriverDocuments(row.profile_id);
         } catch (e) {}
-        const rawProfilePhoto = row.direct_profile_photo || row.profile_avatar || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || mongoDocs?.profilePhoto || row.mysql_profile_photo || null;
-        const rawLicensePhoto = row.direct_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || mongoDocs?.drivingLicense || null;
+        const isUploaded = (url) => url && typeof url === 'string' && !url.includes('ui-avatars.com');
+        const rawProfilePhoto = [row.direct_profile_photo, row.mysql_profile_photo, mongoDocs?.profile_photo_url, mongoDocs?.profile_photo, mongoDocs?.profilePhoto, row.profile_avatar].find(isUploaded) || row.direct_profile_photo || row.profile_avatar || null;
+        const rawLicensePhoto = [row.direct_license_photo, row.mysql_license_photo, mongoDocs?.license_image_url, mongoDocs?.license_photo, mongoDocs?.drivingLicense].find(isUploaded) || row.direct_license_photo || null;
         
         const profilePhoto = formatAssetUrl(rawProfilePhoto, row.full_name);
         const licensePhoto = formatAssetUrl(rawLicensePhoto);
@@ -252,8 +253,9 @@ export const AdminController = {
             try {
               mongoDocs = await MongoService.getDriverDocuments(row.profile_id);
             } catch (e) {}
-            const rawProfilePhoto = row.direct_profile_photo || row.profile_avatar || row.mysql_profile_photo || mongoDocs?.profile_photo_url || mongoDocs?.profile_photo || mongoDocs?.profilePhoto || null;
-            const rawLicensePhoto = row.direct_license_photo || row.mysql_license_photo || mongoDocs?.license_image_url || mongoDocs?.license_photo || mongoDocs?.drivingLicense || null;
+            const isUploaded = (url) => url && typeof url === 'string' && !url.includes('ui-avatars.com');
+            const rawProfilePhoto = [row.direct_profile_photo, row.mysql_profile_photo, mongoDocs?.profile_photo_url, mongoDocs?.profile_photo, mongoDocs?.profilePhoto, row.profile_avatar].find(isUploaded) || row.direct_profile_photo || row.profile_avatar || null;
+            const rawLicensePhoto = [row.direct_license_photo, row.mysql_license_photo, mongoDocs?.license_image_url, mongoDocs?.license_photo, mongoDocs?.drivingLicense].find(isUploaded) || row.direct_license_photo || null;
 
             const profilePhoto = formatAssetUrl(rawProfilePhoto, row.full_name);
             const licensePhoto = formatAssetUrl(rawLicensePhoto);

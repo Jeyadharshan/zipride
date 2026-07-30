@@ -20,15 +20,15 @@ export function formatAssetUrl(urlOrPath, fallbackName = '') {
   let baseUrl = (
     process.env.BASE_URL || 
     process.env.RENDER_EXTERNAL_URL || 
-    'https://zipride-1.onrender.com'
+    ''
   ).replace(/\/$/, '');
 
-  if (baseUrl.startsWith('http://') && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
+  if (baseUrl && baseUrl.startsWith('http://') && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
     baseUrl = baseUrl.replace(/^http:\/\//i, 'https://');
   }
 
   const relativePath = clean.startsWith('/') ? clean : `/${clean}`;
-  return `${baseUrl}${relativePath}`;
+  return baseUrl ? `${baseUrl}${relativePath}` : relativePath;
 }
 
 export default formatAssetUrl;

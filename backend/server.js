@@ -205,9 +205,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/notifications', notificationRoutes);
-// Direct explicit route handlers for admin driver location
-app.get(['/api/v1/admin/driver/:driverId/location', '/api/v1/admin/driver/:id/location', '/api/admin/driver/:driverId/location', '/api/admin/driver/:id/location'], requireAuth, requireAdmin, AdminController.getDriverLocation);
-
+// Admin routes handles /api/v1/admin/driver/:driverId/location
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/v1/documents', documentRoutes);
