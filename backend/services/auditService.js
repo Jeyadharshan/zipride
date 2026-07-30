@@ -41,6 +41,20 @@ export const AuditService = {
     });
   },
 
+  async logAdminAction(opts) {
+    return this.log({
+      action: opts.action,
+      performed_by: opts.adminId || 'ADMIN',
+      profileId: opts.adminId || null,
+      details: {
+        affectedTable: opts.affectedTable,
+        affectedId: opts.affectedId,
+        ipAddress: opts.ipAddress,
+        ...(opts.details || {})
+      }
+    });
+  },
+
   async getRecentLogs({ limit = 50, offset = 0, action = null } = {}) {
     // MongoDB first
     try {

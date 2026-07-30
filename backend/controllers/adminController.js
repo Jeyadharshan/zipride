@@ -470,7 +470,7 @@ export const AdminController = {
         affectedId: String(driverId),
         affectedTable: 'driver_profiles',
         ipAddress: req.ip,
-      });
+      }).catch(() => {});
 
       console.log(`[adminController] Driver ${driverId} (Profile: ${profileId}) deleted successfully`);
 
@@ -495,7 +495,7 @@ export const AdminController = {
         affectedId: profileId,
         affectedTable: 'profiles',
         ipAddress: req.ip,
-      });
+      }).catch(() => {});
 
       return sendSuccess(res, 'User account blocked.');
     } catch (err) {
@@ -573,7 +573,7 @@ export const AdminController = {
         affectedId: profileId,
         affectedTable: 'profiles',
         ipAddress: req.ip,
-      });
+      }).catch(() => {});
 
       console.log(`[adminController] User ${profileId} deleted and backed up to waste table.`);
 
@@ -606,7 +606,7 @@ export const AdminController = {
         affectedTable: 'rides',
         details: { reportType, startDate, endDate },
         ipAddress: req.ip,
-      });
+      }).catch(() => {});
 
       return sendSuccess(res, 'Report data retrieved.', data);
     } catch (err) {
