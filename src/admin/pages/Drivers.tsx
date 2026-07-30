@@ -76,8 +76,8 @@ export function DriverMgmt() {
         const locationMap: Record<number, { live_lat: number | null; live_lng: number | null; location_updated_at: string | null; refreshing: boolean }> = {};
         for (const d of json.data) {
           locationMap[d.driver_id] = {
-            live_lat: d.live_lat ?? null,
-            live_lng: d.live_lng ?? null,
+            live_lat: d.live_lat != null ? Number(d.live_lat) : null,
+            live_lng: d.live_lng != null ? Number(d.live_lng) : null,
             location_updated_at: d.location_updated_at ?? null,
             refreshing: false,
           };
@@ -101,20 +101,28 @@ export function DriverMgmt() {
   }, [searchTerm]);
 
   // Refresh location for a single driver without reloading the whole list
-  const refreshDriverLocation = async (driverId: number) => {
+  const refreshDriverLocation = async (driverId: number, profileId?: string) => {
+    const targetId = driverId || profileId;
+    if (!targetId) return;
+
     setDriverLocations((prev) => ({
       ...prev,
       [driverId]: { ...prev[driverId], refreshing: true },
     }));
     try {
-      const res = await apiFetch(`/api/v1/admin/driver/${driverId}/location`, {
+      const res = await apiFetch(`/api/v1/admin/driver/${targetId}/location`, {
         headers: getAuthHeaders(),
       });
       const json = await res.json();
       if (json.success && json.data) {
         setDriverLocations((prev) => ({
           ...prev,
-          [driverId]: { ...json.data, refreshing: false },
+          [driverId]: {
+            live_lat: json.data.live_lat != null ? Number(json.data.live_lat) : null,
+            live_lng: json.data.live_lng != null ? Number(json.data.live_lng) : null,
+            location_updated_at: json.data.location_updated_at ?? null,
+            refreshing: false,
+          },
         }));
       }
     } catch (err) {
@@ -512,9 +520,17 @@ function DriverLocationCard({
   locationData: LocationData | null;
   onRefresh: () => void;
 }) {
-  const hasLocation = !!locationData?.live_lat && !!locationData?.live_lng;
-  const lat = locationData?.live_lat;
-  const lng = locationData?.live_lng;
+  const rawLat = locationData?.live_lat;
+  const rawLng = locationData?.live_lng;
+  const hasLocation =
+    rawLat !== null &&
+    rawLat !== undefined &&
+    rawLng !== null &&
+    rawLng !== undefined &&
+    !isNaN(Number(rawLat)) &&
+    !isNaN(Number(rawLng));
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
   const updatedAt = locationData?.location_updated_at;
   const refreshing = locationData?.refreshing ?? false;
 

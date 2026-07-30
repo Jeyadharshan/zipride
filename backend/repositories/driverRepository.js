@@ -86,9 +86,14 @@ export const DriverRepository = {
 
   // Update full live location + status — driver_live_location.driver_id = driver_profiles.id (INT)
   async updateLocation(profileId, latitude, longitude, heading = 0, speed = 0, accuracy = 0, batteryPct = null, networkType = null, currentRideId = null) {
-    const [dpRows] = await db.execute(`SELECT id FROM driver_profiles WHERE profile_id = ? LIMIT 1`, [profileId]);
-    if (!dpRows[0]) return;
+    const [dpRows] = await db.execute(`SELECT id FROM driver_profiles WHERE profile_id = ? OR id = ? LIMIT 1`, [profileId, profileId]);
+    if (!dpRows[0]) {
+      console.warn(`[driverRepository] updateLocation: no driver_profile found for profileId/driverId "${profileId}"`);
+      return;
+    }
     const driverId = dpRows[0].id;
+
+    console.log(`[driverRepository] Upserting driver_live_location for driver_id=${driverId} (${profileId}): lat=${latitude}, lng=${longitude}`);
 
     // Upsert live location with all available telemetry fields
     await db.execute(

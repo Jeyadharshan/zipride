@@ -170,15 +170,16 @@ export const AdminController = {
   // Get live location for a single driver (for on-demand refresh in admin panel)
   async getDriverLocation(req, res, next) {
     try {
-      const driverId = parseInt(req.params.id, 10);
-      if (!driverId || isNaN(driverId)) {
-        return sendError(res, 'Invalid driver ID.', 400);
+      const targetId = req.params.id;
+      if (!targetId) {
+        return sendError(res, 'Driver ID is required.', 400);
       }
       const [rows] = await db.execute(
         `SELECT dll.latitude AS live_lat, dll.longitude AS live_lng, dll.updated_at AS location_updated_at
          FROM driver_live_location dll
-         WHERE dll.driver_id = ? LIMIT 1`,
-        [driverId]
+         JOIN driver_profiles dp ON dll.driver_id = dp.id
+         WHERE dp.id = ? OR dp.profile_id = ? LIMIT 1`,
+        [targetId, targetId]
       );
       const location = rows[0] || { live_lat: null, live_lng: null, location_updated_at: null };
       return sendSuccess(res, 'Driver location retrieved.', location);

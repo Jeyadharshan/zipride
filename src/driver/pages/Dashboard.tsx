@@ -9,6 +9,7 @@ import { useAuth } from "@/auth/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { resolveAssetUrl } from "@/shared/utils/resolveAssetUrl";
 import { apiFetch } from "@/lib/api";
+import { getSocket } from "@/shared/lib/socket";
 
 export function DriverDashboard() {
   const navigate = useNavigate();
@@ -159,6 +160,101 @@ export function DriverDashboard() {
           .update({ online_seconds: seconds })
           .eq("id", profile.id)
           .catch(err => console.error("Error syncing online seconds on unmount:", err));
+      }
+    };
+  }, [online, profile?.id]);
+
+  // Live Location Tracker & Socket Emitter when Driver is Online
+  useEffect(() => {
+    if (!online || !profile?.id) return;
+
+    const emitLocation = (lat: number, lng: number, heading = 0, speed = 0, accuracy = 0) => {
+      console.log("[Driver Client] Emitting live location update:", {
+        driverId: profile.id,
+        latitude: lat,
+        longitude: lng,
+        heading,
+        speed,
+        accuracy
+      });
+      try {
+        const socket = getSocket();
+        socket.emit("driver:location_update", {
+          driverId: profile.id,
+          latitude: lat,
+          longitude: lng,
+          heading: heading || 0,
+          speed: speed || 0,
+          accuracy: accuracy || 0
+        });
+      } catch (err) {
+        console.error("[Driver Client] Failed to emit location update:", err);
+      }
+    };
+
+    let watchId: number | null = null;
+    let fallbackInterval: ReturnType<typeof setInterval> | null = null;
+
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      // First immediate position fetch
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          emitLocation(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.heading || 0,
+            pos.coords.speed || 0,
+            pos.coords.accuracy || 0
+          );
+        },
+        (err) => {
+          console.warn("[Driver Client] Geolocation position error, using default Chennai coordinates:", err.message);
+          emitLocation(13.0827, 80.2707);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+
+      // Continuous tracking via watchPosition
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          emitLocation(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.heading || 0,
+            pos.coords.speed || 0,
+            pos.coords.accuracy || 0
+          );
+        },
+        (err) => {
+          console.warn("[Driver Client] Geolocation watch error:", err.message);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+      );
+
+      // Periodic heartbeat emit every 8 seconds to ensure backend location timestamp stays fresh
+      fallbackInterval = setInterval(() => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            emitLocation(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              pos.coords.heading || 0,
+              pos.coords.speed || 0,
+              pos.coords.accuracy || 0
+            );
+          },
+          () => {},
+          { enableHighAccuracy: false, maximumAge: 10000 }
+        );
+      }, 8000);
+    }
+
+    return () => {
+      if (watchId !== null && typeof window !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
       }
     };
   }, [online, profile?.id]);

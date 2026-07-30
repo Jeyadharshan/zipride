@@ -37,19 +37,25 @@ export const handleTrackingEvents = (io, socket, userSockets) => {
 
   // 3. Driver Full Location Update
   // Payload: { driverId, latitude, longitude, heading, speed, accuracy, battery, networkType, rideId }
-  socket.on('driver:location_update', async (data) => {
+  const handleLocationUpdate = async (data = {}) => {
     const {
       driverId, latitude, longitude,
       heading = 0, speed = 0, accuracy = 0,
       battery = null, networkType = null, rideId = null
     } = data;
 
-    if (!driverId || !latitude || !longitude) return;
+    const targetDriverId = driverId || data?.profileId || socket.userId;
+    if (!targetDriverId || latitude === undefined || longitude === undefined || latitude === null || longitude === null) {
+      Logger.warn(`[Socket.IO] Ignored driver location update due to missing ID or coords: targetDriverId=${targetDriverId}, lat=${latitude}, lng=${longitude}`);
+      return;
+    }
+
+    console.log(`[Socket.IO] Received location_update from driver ${targetDriverId} (${socket.id}): lat=${latitude}, lng=${longitude}`);
 
     try {
       // Persist to driver_live_location + ride_tracking
       await DriverRepository.updateLocation(
-        driverId, latitude, longitude,
+        targetDriverId, latitude, longitude,
         heading, speed, accuracy, battery, networkType, rideId
       );
 
@@ -100,13 +106,16 @@ export const handleTrackingEvents = (io, socket, userSockets) => {
         io.emit('driver-location-update', { ...locationPayload, rideId });
       } else {
         // Driver is online but not on a ride — general broadcast
-        io.emit(`driver:coords:${driverId}`, locationPayload);
+        io.emit(`driver:coords:${targetDriverId}`, locationPayload);
         io.emit('driver-location-update', locationPayload);
       }
     } catch (err) {
-      Logger.error(`[Tracking] Location update failed for driver ${driverId}:`, err.message);
+      Logger.error(`[Tracking] Location update failed for driver ${targetDriverId}:`, err.message);
     }
-  });
+  };
+
+  socket.on('driver:location_update', handleLocationUpdate);
+  socket.on('driver:location', handleLocationUpdate);
 
   // 4. Driver rejects a ride — triggers next-driver assignment
   socket.on('ride:reject', async (data) => {
