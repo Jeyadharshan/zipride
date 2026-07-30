@@ -167,22 +167,57 @@ export const AdminController = {
     }
   },
 
-  // Get live location for a single driver (for on-demand refresh in admin panel)
+  // Get live location for a single driver (reads from MongoDB first, then MySQL fallback)
   async getDriverLocation(req, res, next) {
     try {
-      const targetId = req.params.id;
-      if (!targetId) {
+      const driverId = req.params.driverId || req.params.id;
+      if (!driverId) {
         return sendError(res, 'Driver ID is required.', 400);
       }
-      const [rows] = await db.execute(
-        `SELECT dll.latitude AS live_lat, dll.longitude AS live_lng, dll.updated_at AS location_updated_at
-         FROM driver_live_location dll
-         JOIN driver_profiles dp ON dll.driver_id = dp.id
-         WHERE dp.id = ? OR dp.profile_id = ? LIMIT 1`,
-        [targetId, targetId]
-      );
-      const location = rows[0] || { live_lat: null, live_lng: null, location_updated_at: null };
-      return sendSuccess(res, 'Driver location retrieved.', location);
+
+      let locationData = null;
+
+      // 1. Try reading latest location from MongoDB
+      try {
+        const { MongoService } = await import('../services/mongoService.js');
+        locationData = await MongoService.getDriverLocation(driverId);
+      } catch (e) {}
+
+      // 2. Fallback to MySQL driver_live_location
+      if (!locationData || locationData.live_lat == null) {
+        const [rows] = await db.execute(
+          `SELECT dll.latitude AS live_lat, dll.longitude AS live_lng, dll.updated_at AS location_updated_at, dp.profile_id
+           FROM driver_live_location dll
+           JOIN driver_profiles dp ON dll.driver_id = dp.id
+           WHERE dp.id = ? OR dp.profile_id = ? LIMIT 1`,
+          [driverId, driverId]
+        );
+        if (rows[0]) {
+          locationData = {
+            driverId: rows[0].profile_id || driverId,
+            live_lat: rows[0].live_lat != null ? Number(rows[0].live_lat) : null,
+            live_lng: rows[0].live_lng != null ? Number(rows[0].live_lng) : null,
+            location_updated_at: rows[0].location_updated_at
+          };
+        }
+      }
+
+      const responseObj = locationData || {
+        driverId,
+        live_lat: null,
+        live_lng: null,
+        location_updated_at: null
+      };
+
+      return res.json({
+        success: true,
+        message: 'Driver location retrieved.',
+        data: responseObj,
+        driverId: responseObj.driverId,
+        live_lat: responseObj.live_lat,
+        live_lng: responseObj.live_lng,
+        location_updated_at: responseObj.location_updated_at
+      });
     } catch (err) {
       next(err);
     }
@@ -824,6 +859,46 @@ export const AdminController = {
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename=${result.filename}`);
       return res.send(result.content);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async getSettlements(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const data = await SettlementService.getAllSettlements(req.query);
+      return sendSuccess(res, 'Settlements retrieved.', data);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async approveSettlement(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const result = await SettlementService.approveSettlement(req.params.id, req.body?.notes);
+      return sendSuccess(res, 'Settlement approved.', result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async rejectSettlement(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const result = await SettlementService.rejectSettlement(req.params.id, req.body?.reason);
+      return sendSuccess(res, 'Settlement rejected.', result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async markSettlementPaid(req, res, next) {
+    try {
+      const { SettlementService } = await import('../services/settlementService.js');
+      const result = await SettlementService.markPaid(req.params.id, req.body?.txnReference, req.body?.notes);
+      return sendSuccess(res, 'Settlement marked as paid.', result);
     } catch (err) {
       next(err);
     }

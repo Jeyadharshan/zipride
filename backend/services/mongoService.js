@@ -89,6 +89,32 @@ export const MongoService = {
     } catch (err) {
       return null;
     }
+  },
+
+  async getDriverLocation(driverId) {
+    try {
+      const database = await MongoService.connect();
+      if (database) {
+        const collections = ['driver_locations', 'driver_live_location', 'locations'];
+        for (const colName of collections) {
+          const doc = await database.collection(colName).findOne(
+            { $or: [{ driverId: String(driverId) }, { profileId: String(driverId) }, { driver_id: String(driverId) }, { driverId: Number(driverId) }, { driver_id: Number(driverId) }] },
+            { sort: { updated_at: -1, updatedAt: -1, _id: -1 } }
+          );
+          if (doc) {
+            return {
+              driverId: doc.driverId || doc.profileId || doc.driver_id || driverId,
+              live_lat: doc.latitude != null ? Number(doc.latitude) : (doc.live_lat != null ? Number(doc.live_lat) : (doc.lat != null ? Number(doc.lat) : null)),
+              live_lng: doc.longitude != null ? Number(doc.longitude) : (doc.live_lng != null ? Number(doc.live_lng) : (doc.lng != null ? Number(doc.lng) : null)),
+              location_updated_at: doc.updated_at || doc.updatedAt || doc.createdAt || new Date().toISOString()
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Mongo Service] Get driver location failed:', e.message);
+    }
+    return null;
   }
 };
 
