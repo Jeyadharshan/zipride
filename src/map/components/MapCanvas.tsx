@@ -60,16 +60,19 @@ export function MapCanvas({
   };
 
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
+  const isMountedRef = useRef<boolean>(true);
 
   // Initialize Leaflet Map — dynamically imported to avoid SSR "window not defined"
   useEffect(() => {
+    isMountedRef.current = true;
     if (!mapContainerRef.current || mapRef.current) return;
 
+    let mapInstance: L.Map | null = null;
+
     import("leaflet").then((L) => {
+      if (!isMountedRef.current || !mapContainerRef.current || mapRef.current) return;
       injectLeafletCss();
       leafletRef.current = L;
-
-      if (!mapContainerRef.current || mapRef.current) return;
 
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
@@ -81,8 +84,29 @@ export function MapCanvas({
       }).addTo(map);
 
       mapRef.current = map;
-      setMapInitialized(true);
+      mapInstance = map;
+      if (isMountedRef.current) {
+        setMapInitialized(true);
+      }
     });
+
+    return () => {
+      isMountedRef.current = false;
+      if (pickupMarkerRef.current) { pickupMarkerRef.current.remove(); pickupMarkerRef.current = null; }
+      if (dropoffMarkerRef.current) { dropoffMarkerRef.current.remove(); dropoffMarkerRef.current = null; }
+      if (driverMarkerRef.current) { driverMarkerRef.current.remove(); driverMarkerRef.current = null; }
+      if (routeLineRef.current) { routeLineRef.current.remove(); routeLineRef.current = null; }
+
+      if (mapRef.current) {
+        mapRef.current.off();
+        mapRef.current.remove();
+        mapRef.current = null;
+      } else if (mapInstance) {
+        (mapInstance as L.Map).off();
+        (mapInstance as L.Map).remove();
+      }
+      setMapInitialized(false);
+    };
   }, []);
 
   // Effect 1: Fetch actual route and fitBounds ONCE when pickup/dropoff coordinates change

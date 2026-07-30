@@ -12,6 +12,24 @@ import { motion, AnimatePresence } from "motion/react";
 
 export function MapPage() {
   const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (window.history.length > 1 && document.referrer) {
+      window.history.back();
+    } else {
+      navigate({ to: "/dashboard" });
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      // Browser back button popstate listener to ensure component unmounts cleanly
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
   
   const [fromLoc, setFromLoc] = useState(localStorage.getItem("booking_pickup") || TRIP.from);
   const [toLoc, setToLoc] = useState(localStorage.getItem("booking_dropoff") || TRIP.to);
@@ -124,12 +142,14 @@ export function MapPage() {
 
       {/* top bar */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 p-4">
-        <Link
-          to="/search"
-          className="grid h-11 w-11 place-items-center rounded-full glass text-foreground shadow-soft"
+        <button
+          type="button"
+          onClick={handleBack}
+          aria-label="Go back"
+          className="grid h-11 w-11 place-items-center rounded-full glass text-foreground shadow-soft hover:bg-secondary/50 transition-colors cursor-pointer"
         >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </button>
         <div className="glass rounded-full px-4 py-2 shadow-soft">
           <Logo to="/dashboard" size="sm" />
         </div>

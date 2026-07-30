@@ -40,6 +40,8 @@ export function MapView({
   const mapRef = useRef<L.Map | null>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
+  const isMountedRef = useRef<boolean>(true);
+  const geoWatchIdRef = useRef<number | null>(null);
 
   const userMarkerRef = useRef<L.Marker | null>(null);
   const pickupMarkerRef = useRef<L.Marker | null>(null);
@@ -48,13 +50,15 @@ export function MapView({
 
   // Initialize Leaflet Map dynamically to avoid SSR "window not defined"
   useEffect(() => {
+    isMountedRef.current = true;
     if (!mapContainerRef.current || mapRef.current) return;
 
+    let mapInstance: L.Map | null = null;
+
     import("leaflet").then((L) => {
+      if (!isMountedRef.current || !mapContainerRef.current || mapRef.current) return;
       injectLeafletCss();
       leafletRef.current = L;
-
-      if (!mapContainerRef.current || mapRef.current) return;
 
       const mapApiKey = import.meta.env.VITE_MAP_API_KEY || "";
       console.log("[MapView] Connecting Map API key globally:", mapApiKey);
@@ -72,26 +76,56 @@ export function MapView({
         const { lat, lng } = e.latlng;
         try {
           const shortAddress = await reverseGeocode(lat, lng);
-          onDropoffSelected?.(shortAddress, lat, lng);
+          if (isMountedRef.current) {
+            onDropoffSelected?.(shortAddress, lat, lng);
+          }
         } catch (err) {
           console.error("Reverse geocoding click error:", err);
-          onDropoffSelected?.(`Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`, lat, lng);
+          if (isMountedRef.current) {
+            onDropoffSelected?.(`Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`, lat, lng);
+          }
         }
       });
 
       mapRef.current = map;
-      setMapInitialized(true);
+      mapInstance = map;
+      if (isMountedRef.current) {
+        setMapInitialized(true);
+      }
     });
+
+    return () => {
+      isMountedRef.current = false;
+      if (geoWatchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(geoWatchIdRef.current);
+        geoWatchIdRef.current = null;
+      }
+      if (userMarkerRef.current) { userMarkerRef.current.remove(); userMarkerRef.current = null; }
+      if (pickupMarkerRef.current) { pickupMarkerRef.current.remove(); pickupMarkerRef.current = null; }
+      if (dropoffMarkerRef.current) { dropoffMarkerRef.current.remove(); dropoffMarkerRef.current = null; }
+      if (routeLineRef.current) { routeLineRef.current.remove(); routeLineRef.current = null; }
+
+      if (mapRef.current) {
+        mapRef.current.off();
+        mapRef.current.remove();
+        mapRef.current = null;
+      } else if (mapInstance) {
+        (mapInstance as L.Map).off();
+        (mapInstance as L.Map).remove();
+      }
+      setMapInitialized(false);
+    };
   }, []);
 
   // User Current Geolocation Detection
   useEffect(() => {
-    if (!mapInitialized || !mapRef.current || !leafletRef.current) return;
+    if (!mapInitialized || !mapRef.current || !leafletRef.current || !isMountedRef.current) return;
     const L = leafletRef.current;
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          if (!isMountedRef.current || !mapRef.current) return;
           const { latitude, longitude } = position.coords;
           const pos = [latitude, longitude] as [number, number];
 
@@ -119,10 +153,14 @@ export function MapView({
 
           try {
             const shortAddress = await reverseGeocode(latitude, longitude);
-            onUserLocationDetected?.(shortAddress, latitude, longitude);
+            if (isMountedRef.current) {
+              onUserLocationDetected?.(shortAddress, latitude, longitude);
+            }
           } catch (e) {
             console.error("Reverse geocoding current location error:", e);
-            onUserLocationDetected?.("My Current Location", latitude, longitude);
+            if (isMountedRef.current) {
+              onUserLocationDetected?.("My Current Location", latitude, longitude);
+            }
           }
         },
         (error) => {
@@ -134,12 +172,18 @@ export function MapView({
 
   // Pickup and Drop markers & OSRM Road Route polyline display
   useEffect(() => {
-    if (!mapInitialized || !mapRef.current || !leafletRef.current) return;
+    if (!mapInitialized || !mapRef.current || !leafletRef.current || !isMountedRef.current) return;
     const L = leafletRef.current;
 
-    if (pickupMarkerRef.current) mapRef.current!.removeLayer(pickupMarkerRef.current);
-    if (dropoffMarkerRef.current) mapRef.current!.removeLayer(dropoffMarkerRef.current);
-    if (routeLineRef.current) mapRef.current!.removeLayer(routeLineRef.current);
+    if (pickupMarkerRef.current && mapRef.current.hasLayer(pickupMarkerRef.current)) {
+      mapRef.current.removeLayer(pickupMarkerRef.current);
+    }
+    if (dropoffMarkerRef.current && mapRef.current.hasLayer(dropoffMarkerRef.current)) {
+      mapRef.current.removeLayer(dropoffMarkerRef.current);
+    }
+    if (routeLineRef.current && mapRef.current.hasLayer(routeLineRef.current)) {
+      mapRef.current.removeLayer(routeLineRef.current);
+    }
 
     const greenIcon = L.icon({
       iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
@@ -174,6 +218,7 @@ export function MapView({
     if (pickupCoords && dropoffCoords) {
       fetchRoute(pickupCoords, dropoffCoords)
         .then(({ distance, duration, coordinates }) => {
+          if (!isMountedRef.current || !mapRef.current) return;
           routeLineRef.current = L.polyline(coordinates, {
             color: "#ff7a00",
             weight: 5,
