@@ -19,7 +19,13 @@ class DocumentService {
                 updatedAt: new Date()
             });
 
-            await DocumentRepository.save(document.toJSON());
+            const docJson = document.toJSON();
+            docJson.profile_photo = profilePhotoUrl;
+            docJson.profile_photo_url = profilePhotoUrl;
+            docJson.license_photo = drivingLicenseUrl;
+            docJson.license_image_url = drivingLicenseUrl;
+
+            await DocumentRepository.save(docJson);
             Logger.info(`Created driver document for profile: ${profileId}`);
             return document;
         } catch (error) {
@@ -100,15 +106,25 @@ class DocumentService {
                 rejectedReason: null,
                 updatedAt: new Date()
             };
-            if (profilePhoto) updateFields.profilePhoto = profilePhoto;
-            if (drivingLicense) updateFields.drivingLicense = drivingLicense;
+            if (profilePhoto) {
+                updateFields.profilePhoto = profilePhoto;
+                updateFields.profile_photo = profilePhoto;
+                updateFields.profile_photo_url = profilePhoto;
+            }
+            if (drivingLicense) {
+                updateFields.drivingLicense = drivingLicense;
+                updateFields.license_photo = drivingLicense;
+                updateFields.license_image_url = drivingLicense;
+            }
             if (licenseNumber) updateFields.licenseNumber = licenseNumber;
 
-            await collection.updateOne(
-                { profileId },
-                { $set: updateFields },
-                { upsert: true }
-            );
+            if (collection) {
+                await collection.updateOne(
+                    { profileId },
+                    { $set: updateFields },
+                    { upsert: true }
+                );
+            }
             Logger.info(`Updated driver documents for profile: ${profileId}`);
         } catch (error) {
             Logger.error(`Failed to update driver documents: ${error.message}`);

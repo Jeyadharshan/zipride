@@ -138,6 +138,9 @@ export function Verification() {
           documentRow = data;
         }
 
+        const rawPhoto = documentRow?.profile_photo || documentRow?.profile_photo_url || documentRow?.profilePhoto || driverData?.profile_photo || driverData?.driving_licence_image;
+        const rawLicense = documentRow?.license_photo || documentRow?.license_image_url || documentRow?.drivingLicense || driverData?.driving_licence_image || driverData?.license_image_url;
+
         setVerification({
           status: normalizeStatus(driverData?.verification_status ?? driverProfile?.verification_status),
           fullName: profile.full_name || "Unknown Driver",
@@ -147,8 +150,8 @@ export function Verification() {
           vehicle: driverData?.vehicle_type || "Not provided",
           driverCode: driverData?.driver_code || "—",
           submittedAt: formatDate(driverData?.created_at || driverProfile?.created_at),
-          profilePhotoUrl: resolveAssetUrl(documentRow?.profile_photo || documentRow?.profile_photo_url || null),
-          licenseImageUrl: resolveAssetUrl(documentRow?.license_photo || documentRow?.license_image_url || null),
+          profilePhotoUrl: resolveAssetUrl(rawPhoto),
+          licenseImageUrl: resolveAssetUrl(rawLicense),
         });
       } catch (err: any) {
         console.error("Verification page load error:", err);

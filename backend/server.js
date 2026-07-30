@@ -162,7 +162,14 @@ app.get('/uploads/:filename', async (req, res) => {
 
   try {
     const { GridFSService } = await import('./services/gridfsService.js');
-    const gridFile = await GridFSService.getFileStreamByFilename(filename);
+    let gridFile = null;
+    if (filename.length === 24 && /^[0-9a-fA-F]{24}$/.test(filename)) {
+      gridFile = await GridFSService.getFileStream(filename);
+    }
+    if (!gridFile) {
+      gridFile = await GridFSService.getFileStreamByFilename(filename);
+    }
+
     if (gridFile) {
       res.setHeader('Content-Type', gridFile.contentType);
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
@@ -216,24 +223,39 @@ app.use('/api/v2/', (req, res) => {
   res.status(501).json({ success: false, message: 'API version 2 is not yet implemented.' });
 });
 
-// File upload endpoint for the Supabase mock client
-app.post('/api/upload', upload.single('file'), (req, res) => {
+// File upload endpoint for the Supabase mock client (stores directly in MongoDB GridFS)
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: { message: 'No file uploaded' } });
   }
 
   try {
-    const filename = `${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
-    const destination = path.join(uploadsBaseDir, filename);
-    fs.writeFileSync(destination, req.file.buffer);
+    const { GridFSService } = await import('./services/gridfsService.js');
+    const ext = path.extname(req.file.originalname) || '.jpg';
+    const safeName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
 
-    console.log(`[Upload API] Saved file to local storage: ${destination}`);
-    return res.json({ path: filename });
+    let fileUrl = null;
+    try {
+      const gridFile = await GridFSService.uploadBuffer(safeName, req.file.buffer, req.file.mimetype, {
+        originalname: req.file.originalname,
+        fieldname: req.file.fieldname
+      });
+      fileUrl = gridFile.fileUrl; // `/api/uploads/files/${fileId}`
+      console.log(`[Upload API] Saved file to MongoDB GridFS: ${fileUrl}`);
+    } catch (gridErr) {
+      console.error('[Upload API] GridFS upload failed, falling back to local disk:', gridErr.message);
+      const destination = path.join(uploadsBaseDir, safeName);
+      fs.writeFileSync(destination, req.file.buffer);
+      fileUrl = `/uploads/${safeName}`;
+    }
+
+    return res.json({ path: fileUrl, url: fileUrl, filename: safeName });
   } catch (err) {
     console.error('[Upload API] Error saving file:', err.message);
     return res.status(500).json({ success: false, error: { message: err.message } });
   }
 });
+
 
 // 6. Transparent proxy mapping endpoint for backward compatibility with supabase.from() client queries
 app.post('/api/query', AdminController.executeQuery);

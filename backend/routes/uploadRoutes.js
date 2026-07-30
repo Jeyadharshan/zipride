@@ -7,7 +7,14 @@ const router = express.Router();
 router.get('/files/:id', async (req, res) => {
   try {
     const fileId = req.params.id;
-    const fileData = await GridFSService.getFileStream(fileId);
+    let fileData = null;
+
+    if (fileId && fileId.length === 24 && /^[0-9a-fA-F]{24}$/.test(fileId)) {
+      fileData = await GridFSService.getFileStream(fileId);
+    }
+    if (!fileData) {
+      fileData = await GridFSService.getFileStreamByFilename(fileId);
+    }
 
     if (!fileData) {
       return res.status(404).json({ success: false, message: 'File not found in storage.' });

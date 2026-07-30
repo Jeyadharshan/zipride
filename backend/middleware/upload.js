@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { GridFSService } from '../services/gridfsService.js';
 
@@ -86,9 +87,17 @@ export const processUploadedFiles = async (req, res, next) => {
         file.gridfsId = gridFile.fileId;
         console.log(`[Upload Middleware] Uploaded file to MongoDB GridFS: ${gridFile.fileUrl}`);
       } catch (err) {
-        console.error('[Upload Middleware] GridFS upload failed:', err.message);
-        const base64Data = file.buffer.toString('base64');
-        file.cloudinaryUrl = `data:${file.mimetype};base64,${base64Data}`;
+        console.error('[Upload Middleware] GridFS upload failed, attempting local disk fallback:', err.message);
+        try {
+          const uploadsBaseDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads');
+          if (!fs.existsSync(uploadsBaseDir)) fs.mkdirSync(uploadsBaseDir, { recursive: true });
+          const destination = path.join(uploadsBaseDir, safeName);
+          fs.writeFileSync(destination, file.buffer);
+          file.cloudinaryUrl = `/uploads/${safeName}`;
+        } catch (diskErr) {
+          const base64Data = file.buffer.toString('base64');
+          file.cloudinaryUrl = `data:${file.mimetype};base64,${base64Data}`;
+        }
       }
     }
   }
