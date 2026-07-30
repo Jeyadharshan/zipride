@@ -155,56 +155,64 @@ export const AdminRepository = {
 
   // Report data aggregation for admin reports endpoint
   async getReportData({ reportType = 'revenue', startDate = null, endDate = null } = {}) {
-    const dateParts = [];
-    if (startDate) dateParts.push(`DATE(r.booking_time) >= '${startDate}'`);
-    if (endDate) dateParts.push(`DATE(r.booking_time) <= '${endDate}'`);
+    const dateConditions = [];
+    const dateParams = [];
 
-    // Dynamic date range defaults if no dates specified
+    if (startDate) {
+      dateConditions.push(`DATE(r.booking_time) >= ?`);
+      dateParams.push(startDate);
+    }
+    if (endDate) {
+      dateConditions.push(`DATE(r.booking_time) <= ?`);
+      dateParams.push(endDate);
+    }
+
     if (!startDate && !endDate) {
       if (reportType === 'daily') {
-        dateParts.push(`DATE(r.booking_time) = CURDATE()`);
+        dateConditions.push(`DATE(r.booking_time) = CURDATE()`);
       } else if (reportType === 'weekly') {
-        dateParts.push(`r.booking_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)`);
+        dateConditions.push(`r.booking_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)`);
       } else if (reportType === 'monthly') {
-        dateParts.push(`r.booking_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)`);
+        dateConditions.push(`r.booking_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)`);
       } else if (reportType === 'yearly') {
-        dateParts.push(`r.booking_time >= DATE_SUB(NOW(), INTERVAL 365 DAY)`);
+        dateConditions.push(`r.booking_time >= DATE_SUB(NOW(), INTERVAL 365 DAY)`);
       }
     }
 
-    const dateWhere = dateParts.length > 0 ? `AND ${dateParts.join(' AND ')}` : '';
+    const dateWhere = dateConditions.length > 0 ? `AND ${dateConditions.join(' AND ')}` : '';
 
     // Status filter depending on report type
     let statusFilter = '';
     if (reportType === 'cancellation') {
-      statusFilter = `AND r.ride_status = 'Cancelled'`;
+      statusFilter = `AND LOWER(r.ride_status) IN ('cancelled', 'canceled')`;
     } else if (reportType === 'payment') {
       statusFilter = `AND r.payment_status IS NOT NULL`;
     } else if (reportType === 'revenue' || reportType === 'admin_commission') {
-      statusFilter = `AND r.ride_status = 'Ride Completed'`;
+      statusFilter = `AND LOWER(r.ride_status) IN ('ride completed', 'completed')`;
     }
 
     // Summary stats
-    const [[summary]] = await db.execute(
+    const [[summary]] = await db.query(
       `SELECT COUNT(*) AS total_rides,
-              SUM(CASE WHEN r.ride_status = 'Ride Completed' THEN 1 ELSE 0 END) AS completed,
-              SUM(CASE WHEN r.ride_status = 'Cancelled' THEN 1 ELSE 0 END) AS cancelled,
-              SUM(CASE WHEN r.ride_status NOT IN ('Ride Completed','Cancelled') THEN 1 ELSE 0 END) AS pending,
-              COALESCE(SUM(CASE WHEN r.ride_status = 'Ride Completed' THEN COALESCE(r.final_fare, r.estimated_fare, 0) ELSE 0 END), 0) AS revenue,
-              COALESCE(SUM(CASE WHEN r.ride_status = 'Ride Completed' THEN COALESCE(r.final_fare, r.estimated_fare, 0) * 0.10 ELSE 0 END), 0) AS admin_commission,
-              COALESCE(SUM(CASE WHEN r.ride_status = 'Ride Completed' THEN COALESCE(r.final_fare, r.estimated_fare, 0) * 0.90 ELSE 0 END), 0) AS driver_earnings
-       FROM rides r WHERE 1=1 ${dateWhere}`
+              SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN 1 ELSE 0 END) AS completed,
+              SUM(CASE WHEN LOWER(r.ride_status) IN ('cancelled', 'canceled') THEN 1 ELSE 0 END) AS cancelled,
+              SUM(CASE WHEN LOWER(r.ride_status) NOT IN ('ride completed', 'completed', 'cancelled', 'canceled') THEN 1 ELSE 0 END) AS pending,
+              COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) ELSE 0 END), 0) AS revenue,
+              COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) * 0.10 ELSE 0 END), 0) AS admin_commission,
+              COALESCE(SUM(CASE WHEN LOWER(r.ride_status) IN ('ride completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) * 0.90 ELSE 0 END), 0) AS driver_earnings
+       FROM rides r WHERE 1=1 ${dateWhere}`,
+      dateParams
     );
 
     // Wallet stats
-    const [[walletStats]] = await db.execute(
+    const [[walletStats]] = await db.query(
       `SELECT COALESCE(SUM(CASE WHEN transaction_type = 'Credit' THEN amount ELSE 0 END), 0) AS total_credits,
               COALESCE(SUM(CASE WHEN transaction_type = 'Debit' THEN amount ELSE 0 END), 0) AS total_debits
        FROM wallet_transactions`
     );
 
     // Ride details
-    const [rides] = await db.execute(
+    const [rides] = await db.query(
       `SELECT r.id, r.ride_code, r.ride_status, r.final_fare, r.estimated_fare, r.payment_method,
               r.payment_status, r.booking_time, r.completed_time, r.cancellation_reason,
               r.ride_type, r.actual_distance,
@@ -218,11 +226,12 @@ export const AdminRepository = {
        LEFT JOIN ride_locations rl ON r.id = rl.ride_id
        WHERE 1=1 ${dateWhere} ${statusFilter}
        ORDER BY r.booking_time DESC
-       LIMIT 1000`
+       LIMIT 1000`,
+      dateParams
     );
 
     // Driver earnings breakdown
-    const [driverEarnings] = await db.execute(
+    const [driverEarnings] = await db.query(
       `SELECT dp_p.full_name AS driver_name, dp_p.phone AS driver_phone, dp.online_seconds AS online_seconds,
               COUNT(r.id) AS total_rides,
               COALESCE(SUM(COALESCE(r.final_fare, r.estimated_fare, 0)), 0) AS gross_earnings,
@@ -230,13 +239,26 @@ export const AdminRepository = {
        FROM rides r
        LEFT JOIN driver_profiles dp ON r.driver_id = dp.id
        LEFT JOIN profiles dp_p ON dp.profile_id = dp_p.id
-       WHERE r.ride_status = 'Ride Completed' ${dateWhere}
+       WHERE LOWER(r.ride_status) IN ('ride completed', 'completed') ${dateWhere}
        GROUP BY r.driver_id, dp_p.full_name, dp_p.phone, dp.online_seconds
        ORDER BY net_earnings DESC
-       LIMIT 100`
+       LIMIT 100`,
+      dateParams
     );
 
-    return { summary, walletStats, rides, driverEarnings };
+    // Wallet transactions
+    const [walletTransactions] = await db.query(
+      `SELECT wt.id, wt.amount, wt.transaction_type, wt.type, wt.description, wt.status,
+              COALESCE(wt.transaction_date, wt.created_at) AS date,
+              p.full_name AS user_name, p.phone AS user_phone, p.role AS user_role
+       FROM wallet_transactions wt
+       LEFT JOIN wallets w ON wt.wallet_id = w.id
+       LEFT JOIN profiles p ON w.profile_id = p.id
+       ORDER BY COALESCE(wt.transaction_date, wt.created_at) DESC
+       LIMIT 500`
+    );
+
+    return { summary, walletStats, rides, driverEarnings, walletTransactions };
   },
 
   async getAppSettings() {

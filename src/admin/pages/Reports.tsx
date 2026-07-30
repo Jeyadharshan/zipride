@@ -127,7 +127,7 @@ export function Reports() {
 
   useEffect(() => {
     fetchReportData();
-  }, []);
+  }, [selectedReport]);
 
   const fetchReportData = async () => {
     setLoading(true);
@@ -189,6 +189,20 @@ export function Reports() {
           formatOnlineTime(d.online_seconds),
         ]),
       ];
+    } else if (selectedReport === "wallet") {
+      const txns = previewData.walletTransactions || [];
+      csvRows = [
+        ["User Name", "User Phone", "Role", "Type", "Amount (INR)", "Description", "Date"],
+        ...txns.map((t: any) => [
+          t.user_name || "Unknown",
+          t.user_phone || "",
+          t.user_role || "User",
+          t.transaction_type || t.type || "Credit",
+          t.amount || 0,
+          t.description || "",
+          t.date ? new Date(t.date).toLocaleDateString() : "",
+        ]),
+      ];
     } else {
       const rides = previewData.rides || [];
       csvRows = [
@@ -245,6 +259,19 @@ export function Reports() {
           "Gross Earnings (INR)": d.gross_earnings || 0,
           "Net Earnings (INR)": d.net_earnings || 0,
           "Online Time": formatOnlineTime(d.online_seconds),
+        })),
+      );
+    } else if (selectedReport === "wallet") {
+      const txns = previewData.walletTransactions || [];
+      ws = XLSX.utils.json_to_sheet(
+        txns.map((t: any) => ({
+          "User Name": t.user_name || "Unknown",
+          "User Phone": t.user_phone || "",
+          Role: t.user_role || "User",
+          Type: t.transaction_type || t.type || "Credit",
+          "Amount (INR)": t.amount || 0,
+          Description: t.description || "",
+          Date: t.date ? new Date(t.date).toLocaleDateString() : "",
         })),
       );
     } else {
@@ -340,6 +367,17 @@ export function Reports() {
         `INR ${Number(d.gross_earnings || 0).toFixed(2)}`,
         `INR ${Number(d.net_earnings || 0).toFixed(2)}`,
         formatOnlineTime(d.online_seconds),
+      ]);
+    } else if (selectedReport === "wallet") {
+      columns = ["User Name", "Phone", "Role", "Type", "Amount", "Description", "Date"];
+      body = (previewData.walletTransactions || []).map((t: any) => [
+        t.user_name || "Unknown",
+        t.user_phone || "",
+        t.user_role || "User",
+        t.transaction_type || t.type || "Credit",
+        `INR ${t.amount || 0}`,
+        t.description || "",
+        t.date ? new Date(t.date).toLocaleDateString() : "",
       ]);
     } else {
       columns = ["Ride ID", "Date", "Rider", "Driver", "Fare", "Payment", "Status"];
@@ -535,6 +573,23 @@ export function Reports() {
                                   {c}
                                 </th>
                               ))
+                            : selectedReport === "wallet"
+                            ? [
+                                "User Name",
+                                "User Phone",
+                                "Role",
+                                "Type",
+                                "Amount",
+                                "Description",
+                                "Date",
+                              ].map((c) => (
+                                <th
+                                  key={c}
+                                  className="px-3 py-2 text-left font-bold text-[10px] uppercase text-muted-foreground tracking-wider"
+                                >
+                                  {c}
+                                </th>
+                              ))
                             : [
                                 "Ride ID",
                                 "Date",
@@ -575,6 +630,30 @@ export function Reports() {
                                   </td>
                                 </tr>
                               ))
+                          : selectedReport === "wallet"
+                          ? previewData.walletTransactions
+                              ?.slice(0, 50)
+                              .map((t: any, index: number) => (
+                                <tr key={t.id || index} className="hover:bg-secondary/20">
+                                  <td className="px-3 py-2 font-bold text-primary">
+                                    {t.user_name || "Unknown"}
+                                  </td>
+                                  <td className="px-3 py-2">{t.user_phone || ""}</td>
+                                  <td className="px-3 py-2 uppercase font-semibold text-[10px]">
+                                    {t.user_role || "User"}
+                                  </td>
+                                  <td className="px-3 py-2 font-bold">
+                                    {t.transaction_type || t.type || "Credit"}
+                                  </td>
+                                  <td className="px-3 py-2 font-bold">
+                                    ₹{Number(t.amount || 0).toFixed(2)}
+                                  </td>
+                                  <td className="px-3 py-2">{t.description || "-"}</td>
+                                  <td className="px-3 py-2">
+                                    {t.date ? new Date(t.date).toLocaleDateString() : "-"}
+                                  </td>
+                                </tr>
+                              ))
                           : previewData.rides?.slice(0, 50).map((r: any) => (
                               <tr key={r.id} className="hover:bg-secondary/20">
                                 <td className="px-3 py-2 font-bold text-primary">
@@ -595,7 +674,10 @@ export function Reports() {
                         {((selectedReport === "driver_earnings" &&
                           (!previewData.driverEarnings ||
                             previewData.driverEarnings.length === 0)) ||
-                          (selectedReport !== "driver_earnings" &&
+                          (selectedReport === "wallet" &&
+                          (!previewData.walletTransactions ||
+                            previewData.walletTransactions.length === 0)) ||
+                          (selectedReport !== "driver_earnings" && selectedReport !== "wallet" &&
                             (!previewData.rides || previewData.rides.length === 0))) && (
                           <tr>
                             <td colSpan={7} className="py-8 text-center text-muted-foreground">
