@@ -95,17 +95,15 @@ export const DriverRepository = {
 
     console.log(`[driverRepository] Upserting driver_live_location for driver_id=${driverId} (${profileId}): lat=${latitude}, lng=${longitude}`);
 
-    // Upsert live location with all available telemetry fields
+    // Upsert live location
     await db.execute(
-      `INSERT INTO driver_live_location (driver_id, latitude, longitude, heading, speed, updated_at)
-       VALUES (?, ?, ?, ?, ?, NOW())
+      `INSERT INTO driver_live_location (driver_id, latitude, longitude, updated_at)
+       VALUES (?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE
          latitude = VALUES(latitude),
          longitude = VALUES(longitude),
-         heading = VALUES(heading),
-         speed = VALUES(speed),
          updated_at = NOW()`,
-      [driverId, latitude, longitude, heading, speed]
+      [driverId, latitude, longitude]
     );
 
     // Append to ride_tracking history if there is an active ride
