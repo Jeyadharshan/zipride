@@ -33,24 +33,24 @@ export const AuditService = {
   },
 
   async logAction(opts) {
-    return this.log({
-      action: opts.action,
-      performed_by: opts.profileId || 'SYSTEM',
-      profileId: opts.profileId,
-      details: { tableName: opts.tableName, recordId: opts.recordId, notes: opts.notes }
+    return AuditService.log({
+      action: opts?.action,
+      performed_by: opts?.profileId || 'SYSTEM',
+      profileId: opts?.profileId,
+      details: { tableName: opts?.tableName, recordId: opts?.recordId, notes: opts?.notes }
     });
   },
 
   async logAdminAction(opts) {
-    return this.log({
-      action: opts.action,
-      performed_by: opts.adminId || 'ADMIN',
-      profileId: opts.adminId || null,
+    return AuditService.log({
+      action: opts?.action,
+      performed_by: opts?.adminId || 'ADMIN',
+      profileId: opts?.adminId || null,
       details: {
-        affectedTable: opts.affectedTable,
-        affectedId: opts.affectedId,
-        ipAddress: opts.ipAddress,
-        ...(opts.details || {})
+        affectedTable: opts?.affectedTable,
+        affectedId: opts?.affectedId,
+        ipAddress: opts?.ipAddress,
+        ...(opts?.details || {})
       }
     });
   },

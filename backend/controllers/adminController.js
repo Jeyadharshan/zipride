@@ -609,13 +609,19 @@ export const AdminController = {
       const { reportType = 'revenue', startDate, endDate } = req.query;
       const data = await AdminRepository.getReportData({ reportType, startDate, endDate });
 
-      await AuditService.logAdminAction({
-        adminId: req.user?.id || 'system',
-        action: 'REPORT_DOWNLOADED',
-        affectedTable: 'rides',
-        details: { reportType, startDate, endDate },
-        ipAddress: req.ip,
-      }).catch(() => {});
+      try {
+        if (AuditService && typeof AuditService.logAdminAction === 'function') {
+          await AuditService.logAdminAction({
+            adminId: req.user?.id || 'system',
+            action: 'REPORT_DOWNLOADED',
+            affectedTable: 'rides',
+            details: { reportType, startDate, endDate },
+            ipAddress: req.ip,
+          }).catch(() => {});
+        }
+      } catch (auditErr) {
+        console.warn('[AdminController] Audit log failed silently:', auditErr?.message);
+      }
 
       return sendSuccess(res, 'Report data retrieved.', data);
     } catch (err) {
