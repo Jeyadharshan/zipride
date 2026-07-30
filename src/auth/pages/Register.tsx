@@ -26,6 +26,13 @@ export function Register() {
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
 
+  // Driver vehicle details
+  const [vehicleMake, setVehicleMake] = useState("");
+  const [vehicleModel, setVehicleModel] = useState("");
+  const [vehicleYear, setVehicleYear] = useState("");
+  const [vehicleColor, setVehicleColor] = useState("");
+  const [vehiclePlate, setVehiclePlate] = useState("");
+
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -140,7 +147,12 @@ export function Register() {
             profilePhoto: profilePhotoUrl,
             licenseImage: licenseImageUrl,
             licenseNumber: licenseNumber.trim() || ("DRV-LIC-" + Date.now().toString().slice(-8)),
-            licenseExpiry: new Date(Date.now() + 5 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+            licenseExpiry: new Date(Date.now() + 5 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+            vehicleMake: vehicleMake.trim() || "Toyota",
+            vehicleModel: vehicleModel.trim() || "Corolla",
+            vehicleYear: vehicleYear ? parseInt(vehicleYear, 10) : 2022,
+            vehicleColor: vehicleColor.trim() || "White",
+            vehiclePlate: vehiclePlate.trim() || "",
           } : null
         }
       });
@@ -521,6 +533,80 @@ export function Register() {
                       <span className="text-xs text-muted-foreground truncate">
                         {licenseFile ? licenseFile.name : "No file selected"}
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Vehicle Details */}
+                  <div className="space-y-3 rounded-xl bg-background/50 p-3 border border-border/60">
+                    <p className="text-xs font-bold text-muted-foreground">Vehicle Details</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleMake">
+                          Car Make <span className="text-muted-foreground/60">(e.g. Honda)</span>
+                        </label>
+                        <input
+                          id="vehicleMake"
+                          type="text"
+                          placeholder="Toyota"
+                          value={vehicleMake}
+                          onChange={(e) => setVehicleMake(e.target.value)}
+                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleModel">
+                          Car Model <span className="text-muted-foreground/60">(e.g. City)</span>
+                        </label>
+                        <input
+                          id="vehicleModel"
+                          type="text"
+                          placeholder="Corolla"
+                          value={vehicleModel}
+                          onChange={(e) => setVehicleModel(e.target.value)}
+                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleYear">
+                          Year of Manufacture
+                        </label>
+                        <input
+                          id="vehicleYear"
+                          type="number"
+                          min={1990}
+                          max={new Date().getFullYear() + 1}
+                          placeholder="2022"
+                          value={vehicleYear}
+                          onChange={(e) => setVehicleYear(e.target.value)}
+                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleColor">
+                          Vehicle Color
+                        </label>
+                        <input
+                          id="vehicleColor"
+                          type="text"
+                          placeholder="White"
+                          value={vehicleColor}
+                          onChange={(e) => setVehicleColor(e.target.value)}
+                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehiclePlate">
+                        License Plate Number
+                      </label>
+                      <input
+                        id="vehiclePlate"
+                        type="text"
+                        placeholder="TN 01 AB 1234"
+                        value={vehiclePlate}
+                        onChange={(e) => setVehiclePlate(e.target.value)}
+                        className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none font-medium"
+                      />
                     </div>
                   </div>
                 </div>

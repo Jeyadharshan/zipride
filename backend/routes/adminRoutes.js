@@ -16,6 +16,7 @@ router.get('/verifications', requireAuth, requireAdmin, AdminController.getDrive
 router.get('/driver-documents/:profileId', requireAuth, requireAdmin, AdminController.getDriverDocuments);
 router.post('/driver/:id/approve', requireAuth, requireAdmin, AdminController.approveDriver);
 router.post('/driver/:id/reject', requireAuth, requireAdmin, AdminController.rejectDriver);
+router.get('/driver/:id/location', requireAuth, requireAdmin, AdminController.getDriverLocation);
 router.delete('/driver/:id', requireAuth, requireAdmin, AdminController.deleteDriver);
 router.post('/user/:id/block', requireAuth, requireAdmin, AdminController.blockUser);
 router.post('/user/:id/unblock', requireAuth, requireAdmin, AdminController.unblockUser);

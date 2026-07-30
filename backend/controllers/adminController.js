@@ -120,12 +120,14 @@ export const AdminController = {
           COALESCE(SUM(CASE WHEN r.ride_status IN ('Ride Completed', 'completed') THEN COALESCE(r.final_fare, r.estimated_fare, 0) ELSE 0 END), 0) AS total_earnings,
           dd.profile_photo AS mysql_profile_photo,
           v.vehicle_brand AS vehicle_make, v.vehicle_model, v.vehicle_color,
-          v.vehicle_number AS license_plate, v.vehicle_type_id
+          v.vehicle_number AS license_plate, v.vehicle_type_id,
+          dll.latitude AS live_lat, dll.longitude AS live_lng, dll.updated_at AS location_updated_at
         FROM driver_profiles dp
         JOIN profiles p ON dp.profile_id = p.id
         LEFT JOIN driver_documents dd ON dd.driver_id = dp.id
         LEFT JOIN vehicles v ON v.driver_id = dp.id AND v.is_active = 1
         LEFT JOIN rides r ON r.driver_id = dp.id
+        LEFT JOIN driver_live_location dll ON dll.driver_id = dp.id
         WHERE 1=1
       `;
       const params = [];
@@ -134,7 +136,7 @@ export const AdminController = {
         const s = `%${search}%`;
         params.push(s, s, s, s, s);
       }
-      sql += ` GROUP BY dp.id, p.id, dd.id, v.id ORDER BY dp.created_at DESC`;
+      sql += ` GROUP BY dp.id, p.id, dd.id, v.id, dll.driver_id ORDER BY dp.created_at DESC`;
 
       const [rows] = await db.query(sql, params);
 
@@ -155,10 +157,31 @@ export const AdminController = {
           profile_photo: profilePhoto,
           profile_photo_url: profilePhoto,
           license_image_url: licensePhoto,
+          // live location fields already present from SQL JOIN (live_lat, live_lng, location_updated_at)
         };
       }));
 
       return sendSuccess(res, 'Drivers list retrieved.', enriched);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // Get live location for a single driver (for on-demand refresh in admin panel)
+  async getDriverLocation(req, res, next) {
+    try {
+      const driverId = parseInt(req.params.id, 10);
+      if (!driverId || isNaN(driverId)) {
+        return sendError(res, 'Invalid driver ID.', 400);
+      }
+      const [rows] = await db.execute(
+        `SELECT dll.latitude AS live_lat, dll.longitude AS live_lng, dll.updated_at AS location_updated_at
+         FROM driver_live_location dll
+         WHERE dll.driver_id = ? LIMIT 1`,
+        [driverId]
+      );
+      const location = rows[0] || { live_lat: null, live_lng: null, location_updated_at: null };
+      return sendSuccess(res, 'Driver location retrieved.', location);
     } catch (err) {
       next(err);
     }

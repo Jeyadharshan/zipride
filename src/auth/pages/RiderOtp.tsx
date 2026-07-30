@@ -78,11 +78,11 @@ export function Otp() {
             licenseExpiry: details.licenseExpiry,
             profilePhotoUrl: details.profilePhoto,
             licenseImageUrl: details.licenseImage,
-            vehicleMake: "Toyota",
-            vehicleModel: "Corolla",
-            vehicleYear: 2022,
-            vehicleColor: "White",
-            vehiclePlate: "DRV-TEMP-" + Date.now().toString().slice(-4),
+            vehicleMake: details.vehicleMake || "Toyota",
+            vehicleModel: details.vehicleModel || "Corolla",
+            vehicleYear: details.vehicleYear || 2022,
+            vehicleColor: details.vehicleColor || "White",
+            vehiclePlate: details.vehiclePlate || ("DRV-TEMP-" + Date.now().toString().slice(-4)),
             vehicleType: "Economy"
           };
 

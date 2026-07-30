@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Star, Search, Phone, Mail, Car, CreditCard, User,
-  FileText, Shield, ShieldOff, Trash2, RefreshCw, ChevronDown, ChevronUp, Image, X
+  FileText, Shield, ShieldOff, Trash2, RefreshCw, ChevronDown, ChevronUp, Image, X, MapPin
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { AdminShell } from "@/admin/layouts/AdminShell";
@@ -49,6 +49,8 @@ export function DriverMgmt() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [actingId, setActingId] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; label: string } | null>(null);
+  // Per-driver live location cache: driverId -> { live_lat, live_lng, location_updated_at, refreshing }
+  const [driverLocations, setDriverLocations] = useState<Record<number, { live_lat: number | null; live_lng: number | null; location_updated_at: string | null; refreshing: boolean }>>({});
 
   const loadDrivers = async (search = "") => {
     setLoading(true);
@@ -70,6 +72,17 @@ export function DriverMgmt() {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setDrivers(json.data);
+        // Seed driverLocations from the list response (JOIN already provides it)
+        const locationMap: Record<number, { live_lat: number | null; live_lng: number | null; location_updated_at: string | null; refreshing: boolean }> = {};
+        for (const d of json.data) {
+          locationMap[d.driver_id] = {
+            live_lat: d.live_lat ?? null,
+            live_lng: d.live_lng ?? null,
+            location_updated_at: d.location_updated_at ?? null,
+            refreshing: false,
+          };
+        }
+        setDriverLocations(locationMap);
       }
     } catch (err) {
       console.error("Error loading drivers:", err);
@@ -86,6 +99,33 @@ export function DriverMgmt() {
     const t = setTimeout(() => loadDrivers(searchTerm), 350);
     return () => clearTimeout(t);
   }, [searchTerm]);
+
+  // Refresh location for a single driver without reloading the whole list
+  const refreshDriverLocation = async (driverId: number) => {
+    setDriverLocations((prev) => ({
+      ...prev,
+      [driverId]: { ...prev[driverId], refreshing: true },
+    }));
+    try {
+      const res = await apiFetch(`/api/v1/admin/driver/${driverId}/location`, {
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setDriverLocations((prev) => ({
+          ...prev,
+          [driverId]: { ...json.data, refreshing: false },
+        }));
+      }
+    } catch (err) {
+      console.error("Error refreshing driver location:", err);
+    } finally {
+      setDriverLocations((prev) => ({
+        ...prev,
+        [driverId]: { ...prev[driverId], refreshing: false },
+      }));
+    }
+  };
 
   // Live update online drivers' time in real-time on dashboard
   useEffect(() => {
@@ -314,6 +354,14 @@ export function DriverMgmt() {
                         <InfoCard label="Joined" value={d.created_at ? new Date(d.created_at).toLocaleDateString() : "—"} />
                       </div>
 
+                      {/* Live Location */}
+                      <DriverLocationCard
+                        driverId={d.driver_id}
+                        driverName={d.full_name || "Driver"}
+                        locationData={driverLocations[d.driver_id] ?? null}
+                        onRefresh={() => refreshDriverLocation(d.driver_id)}
+                      />
+
                       {/* Documents */}
                       <div>
                         <p className="text-xs font-bold uppercase text-muted-foreground mb-3">Verification Documents</p>
@@ -442,6 +490,95 @@ function InfoCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl bg-card border border-border px-3 py-2.5">
       <p className="text-[10px] font-bold uppercase text-muted-foreground">{label}</p>
       <p className="text-sm font-semibold mt-0.5 truncate">{value}</p>
+    </div>
+  );
+}
+
+interface LocationData {
+  live_lat: number | null;
+  live_lng: number | null;
+  location_updated_at: string | null;
+  refreshing: boolean;
+}
+
+function DriverLocationCard({
+  driverId,
+  driverName,
+  locationData,
+  onRefresh,
+}: {
+  driverId: number;
+  driverName: string;
+  locationData: LocationData | null;
+  onRefresh: () => void;
+}) {
+  const hasLocation = !!locationData?.live_lat && !!locationData?.live_lng;
+  const lat = locationData?.live_lat;
+  const lng = locationData?.live_lng;
+  const updatedAt = locationData?.location_updated_at;
+  const refreshing = locationData?.refreshing ?? false;
+
+  const formattedTime = updatedAt
+    ? new Date(updatedAt).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : null;
+
+  const mapEmbedUrl = hasLocation
+    ? `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`
+    : null;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+          <MapPin className="h-3.5 w-3.5" /> Live Location
+        </p>
+        <button
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
+      {hasLocation ? (
+        <div className="rounded-xl border border-border overflow-hidden">
+          {/* Map embed */}
+          <iframe
+            title={`${driverName} live location`}
+            src={mapEmbedUrl!}
+            width="100%"
+            height="220"
+            style={{ border: 0, display: "block" }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+          {/* Coordinates + timestamp bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-card border-t border-border text-xs">
+            <span className="font-mono font-semibold text-foreground">
+              {lat!.toFixed(6)}, {lng!.toFixed(6)}
+            </span>
+            {formattedTime && (
+              <span className="text-muted-foreground flex items-center gap-1">
+                <RefreshCw className="h-3 w-3" /> Last updated: {formattedTime}
+              </span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-secondary/20 py-6 text-muted-foreground">
+          <MapPin className="h-6 w-6 opacity-30" />
+          <p className="text-xs font-semibold">No location data</p>
+          <p className="text-[10px] opacity-70">Driver has not shared location yet</p>
+        </div>
+      )}
     </div>
   );
 }
