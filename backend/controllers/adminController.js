@@ -469,12 +469,13 @@ export const AdminController = {
 
       const profileId = driverProfile.profile_id;
 
-      // Delete from MongoDB driver_documents
+      // Delete from MongoDB driver_documents and purge Cloudinary images
       try {
-        await DocumentRepository.default.deleteByProfileId(profileId);
-        console.log(`[adminController] Deleted MongoDB documents for profile: ${profileId}`);
+        const { default: DocumentService } = await import('../services/documentService.js');
+        await DocumentService.deleteDriverDocuments(profileId);
+        console.log(`[adminController] Deleted MongoDB documents and Cloudinary assets for profile: ${profileId}`);
       } catch (err) {
-        console.warn('[adminController] Failed to delete MongoDB documents:', err.message);
+        console.warn('[adminController] Failed to delete MongoDB documents/Cloudinary assets:', err.message);
       }
 
       // Delete wallet transactions first (foreign key reference)

@@ -92,7 +92,7 @@ function DocCard({ url, label, icon: Icon }: { url: string; label: string; icon:
         className="flex h-40 w-full flex-col items-center justify-center bg-secondary/70 text-muted-foreground"
       >
         <Icon className="h-6 w-6 opacity-40" />
-        <p className="mt-2 text-xs">Image unavailable</p>
+        <p className="mt-2 text-xs font-semibold">Image not available</p>
       </div>
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-gradient-to-t from-black/70 via-black/30 to-transparent py-2 text-xs font-semibold text-white">
         <Icon className="h-3.5 w-3.5" /> {label}

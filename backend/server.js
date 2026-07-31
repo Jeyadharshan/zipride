@@ -151,7 +151,6 @@ app.use('/uploads', (req, res, next) => {
   }
   next();
 });
-
 app.get('/uploads/:filename', async (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(uploadsBaseDir, filename);
@@ -177,10 +176,10 @@ app.get('/uploads/:filename', async (req, res) => {
     }
   } catch (e) {}
 
-  // If the file does not exist on disk or GridFS, return a clean SVG placeholder image instead of "Cannot GET /uploads/..."
+  // If the file does not exist on disk or GridFS, return a clean SVG badge showing "Image not available"
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=86400');
-  return res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="background:#f1f5f9;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`);
+  return res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200" fill="none"><rect width="300" height="200" fill="#f8fafc"/><rect x="1" y="1" width="298" height="198" rx="8" stroke="#cbd5e1" stroke-dasharray="4 4"/><text x="150" y="105" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="#64748b">Image not available</text></svg>`);
 });
 
 app.use('/uploads', express.static(uploadsBaseDir, {
@@ -224,35 +223,32 @@ app.use('/api/v2/', (req, res) => {
   res.status(501).json({ success: false, message: 'API version 2 is not yet implemented.' });
 });
 
-// File upload endpoint for the Supabase mock client (stores directly in MongoDB GridFS)
+// File upload endpoint for the Supabase mock client (uploads directly to Cloudinary)
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: { message: 'No file uploaded' } });
   }
 
   try {
-    const { GridFSService } = await import('./services/gridfsService.js');
-    const ext = path.extname(req.file.originalname) || '.jpg';
-    const safeName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
+    const { CloudinaryService } = await import('./services/cloudinaryService.js');
+    const folder = req.body?.folder || 'zipride_uploads';
+    const uploadResult = await CloudinaryService.uploadImage(req.file.buffer, folder);
 
-    let fileUrl = null;
-    try {
-      const gridFile = await GridFSService.uploadBuffer(safeName, req.file.buffer, req.file.mimetype, {
-        originalname: req.file.originalname,
-        fieldname: req.file.fieldname
+    if (uploadResult) {
+      return res.json({
+        path: uploadResult.url,
+        url: uploadResult.url,
+        filename: uploadResult.publicId,
+        public_id: uploadResult.publicId
       });
-      fileUrl = gridFile.fileUrl; // `/api/uploads/files/${fileId}`
-      console.log(`[Upload API] Saved file to MongoDB GridFS: ${fileUrl}`);
-    } catch (gridErr) {
-      console.error('[Upload API] GridFS upload failed, falling back to local disk:', gridErr.message);
-      const destination = path.join(uploadsBaseDir, safeName);
-      fs.writeFileSync(destination, req.file.buffer);
-      fileUrl = `/uploads/${safeName}`;
     }
 
-    return res.json({ path: fileUrl, url: fileUrl, filename: safeName });
+    // Fallback if Cloudinary is missing configuration
+    const base64Data = req.file.buffer.toString('base64');
+    const dataUri = `data:${req.file.mimetype};base64,${base64Data}`;
+    return res.json({ path: dataUri, url: dataUri, filename: 'datauri' });
   } catch (err) {
-    console.error('[Upload API] Error saving file:', err.message);
+    console.error('[Upload API] Error saving file to Cloudinary:', err.message);
     return res.status(500).json({ success: false, error: { message: err.message } });
   }
 });

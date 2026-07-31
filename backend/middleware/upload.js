@@ -1,10 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import multer from 'multer';
-import { GridFSService } from '../services/gridfsService.js';
+import CloudinaryService from '../services/cloudinaryService.js';
 
-// Setup local memoryStorage to buffer files before pushing to MongoDB GridFS
+// Setup memoryStorage to buffer files in memory before uploading to Cloudinary
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
@@ -74,30 +73,28 @@ export const processUploadedFiles = async (req, res, next) => {
   for (const file of filesToProcess) {
     if (file.cloudinaryUrl) continue;
 
-    const ext = path.extname(file.originalname) || (file.mimetype === 'application/pdf' ? '.pdf' : '.jpg');
-    const safeName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
-
     if (file.buffer) {
       try {
-        const gridFile = await GridFSService.uploadBuffer(safeName, file.buffer, file.mimetype, {
-          originalname: file.originalname,
-          fieldname: file.fieldname
-        });
-        file.cloudinaryUrl = gridFile.fileUrl;
-        file.gridfsId = gridFile.fileId;
-        console.log(`[Upload Middleware] Uploaded file to MongoDB GridFS: ${gridFile.fileUrl}`);
-      } catch (err) {
-        console.error('[Upload Middleware] GridFS upload failed, attempting local disk fallback:', err.message);
-        try {
-          const uploadsBaseDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads');
-          if (!fs.existsSync(uploadsBaseDir)) fs.mkdirSync(uploadsBaseDir, { recursive: true });
-          const destination = path.join(uploadsBaseDir, safeName);
-          fs.writeFileSync(destination, file.buffer);
-          file.cloudinaryUrl = `/uploads/${safeName}`;
-        } catch (diskErr) {
+        const folder = req.params?.folder || 'zipride_driver_docs';
+        const uploadRes = await CloudinaryService.uploadImage(file.buffer, folder);
+        if (uploadRes) {
+          file.cloudinaryUrl = uploadRes.url;
+          file.publicId = uploadRes.publicId;
+          file.public_id = uploadRes.public_id;
+          console.log(`[Upload Middleware] Successfully uploaded ${file.fieldname || 'file'} to Cloudinary: ${uploadRes.url}`);
+        } else {
+          console.warn(`[Upload Middleware] Cloudinary upload returned empty for ${file.originalname}. Fallback to base64 data URI.`);
           const base64Data = file.buffer.toString('base64');
           file.cloudinaryUrl = `data:${file.mimetype};base64,${base64Data}`;
+          file.publicId = null;
+          file.public_id = null;
         }
+      } catch (err) {
+        console.error('[Upload Middleware] Cloudinary upload error:', err.message);
+        const base64Data = file.buffer.toString('base64');
+        file.cloudinaryUrl = `data:${file.mimetype};base64,${base64Data}`;
+        file.publicId = null;
+        file.public_id = null;
       }
     }
   }
@@ -107,6 +104,10 @@ export const processUploadedFiles = async (req, res, next) => {
 
 export const uploadToCloudinary = (folderName) => {
   return async (req, res, next) => {
+    if (folderName) {
+      req.params = req.params || {};
+      req.params.folder = folderName;
+    }
     await processUploadedFiles(req, res, next);
   };
 };

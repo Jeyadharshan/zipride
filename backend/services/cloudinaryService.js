@@ -28,7 +28,7 @@ export const CloudinaryService = {
 
   async uploadImage(fileBufferOrPath, folder = 'zipride_uploads', oldPublicId = null) {
     if (!isCloudinaryConfigured) {
-      console.log('[CloudinaryService] Credentials missing — falling back to persistent MongoDB storage.');
+      console.log('[CloudinaryService] Warning: Cloudinary credentials missing in .env');
       return null;
     }
 
@@ -38,25 +38,37 @@ export const CloudinaryService = {
         await this.deleteImage(oldPublicId).catch(() => {});
       }
 
-      const uploadResult = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder,
-            resource_type: 'auto',
-            overwrite: true
-          },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-          }
-        );
-        stream.end(fileBufferOrPath);
-      });
+      let uploadResult;
+      if (typeof fileBufferOrPath === 'string') {
+        // Upload from local file path string
+        uploadResult = await cloudinary.uploader.upload(fileBufferOrPath, {
+          folder,
+          resource_type: 'auto',
+          overwrite: true
+        });
+      } else {
+        // Upload from Buffer stream
+        uploadResult = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder,
+              resource_type: 'auto',
+              overwrite: true
+            },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result);
+            }
+          );
+          stream.end(fileBufferOrPath);
+        });
+      }
 
-      console.log(`[CloudinaryService] ✅ Image Uploaded: ${uploadResult.secure_url}`);
+      console.log(`[CloudinaryService] ✅ Image Uploaded: ${uploadResult.secure_url} (public_id: ${uploadResult.public_id})`);
       return {
         url: uploadResult.secure_url,
         publicId: uploadResult.public_id,
+        public_id: uploadResult.public_id,
         bytes: uploadResult.bytes,
         format: uploadResult.format
       };
@@ -70,8 +82,8 @@ export const CloudinaryService = {
     if (!isCloudinaryConfigured || !publicId) return false;
     try {
       const res = await cloudinary.uploader.destroy(publicId);
-      console.log(`[CloudinaryService] 🗑️ Image Deleted: ${publicId}`);
-      return res.result === 'ok';
+      console.log(`[CloudinaryService] 🗑️ Image Deleted from Cloudinary: ${publicId}`);
+      return res.result === 'ok' || res.result === 'not found';
     } catch (err) {
       console.warn(`[CloudinaryService] Delete image failed for ${publicId}:`, err.message);
       return false;

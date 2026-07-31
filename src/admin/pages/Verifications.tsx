@@ -67,7 +67,7 @@ function DocBox({
           className="w-full h-full flex flex-col items-center justify-center bg-secondary text-muted-foreground gap-1"
         >
           <Icon className="h-6 w-6 opacity-40" />
-          <p className="text-xs">Document File</p>
+          <p className="text-xs font-semibold">Image not available</p>
         </div>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white text-[11px] font-semibold px-2 py-1.5 flex items-center justify-between">
           <span className="flex items-center gap-1 truncate"><Icon className="h-3 w-3" /> {label}</span>

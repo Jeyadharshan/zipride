@@ -231,6 +231,12 @@ export const AuthController = {
       try {
         const { default: DocumentService } = await import('../services/documentService.js');
         const licenseImageVal = req.files?.licenseImage?.[0]?.cloudinaryUrl || req.body.licenseImageUrl;
+        const publicIds = {};
+        if (req.files?.profilePhoto?.[0]?.publicId) publicIds.profilePhoto = req.files.profilePhoto[0].publicId;
+        if (req.files?.licenseImage?.[0]?.publicId) publicIds.drivingLicense = req.files.licenseImage[0].publicId;
+        if (req.files?.rcBook?.[0]?.publicId) publicIds.rcBook = req.files.rcBook[0].publicId;
+        if (req.files?.insurance?.[0]?.publicId) publicIds.insurancePhoto = req.files.insurance[0].publicId;
+        if (req.files?.selfie?.[0]?.publicId) publicIds.selfiePhoto = req.files.selfie[0].publicId;
 
         await DocumentService.createDriverDocument(
           driverIntId,
@@ -239,12 +245,16 @@ export const AuthController = {
             fullName,
             phone,
             email,
-            licenseNumber
+            licenseNumber,
+            rcBookUrl: req.files?.rcBook?.[0]?.cloudinaryUrl || req.body.rcBookUrl || null,
+            insuranceUrl: req.files?.insurance?.[0]?.cloudinaryUrl || req.body.insuranceUrl || null,
+            selfieUrl: req.files?.selfie?.[0]?.cloudinaryUrl || req.body.selfieUrl || null
           },
           profilePhotoVal,
-          licenseImageVal
+          licenseImageVal,
+          publicIds
         );
-        console.log('[authController] Driver document saved to MongoDB');
+        console.log('[authController] Driver document saved to MongoDB with Cloudinary URLs and public_ids');
       } catch (err) {
         console.error('[authController] MongoDB save failed:', err.message);
       }

@@ -52,7 +52,6 @@ export const getSocket = (): Socket => {
       // ⚠️  CRITICAL: polling first — required for Render / nginx proxy
       transports: ["polling", "websocket"],
       upgrade: true,
-      upgradeTimeout: 15000,
 
       // Do NOT auto-connect at module load; caller calls socket.connect()
       autoConnect: false,

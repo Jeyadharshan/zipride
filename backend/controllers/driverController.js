@@ -86,12 +86,36 @@ export const DriverController = {
   async uploadDocuments(req, res, next) {
     try {
       const profileId = req.user.id;
-      const rawProfilePhoto = req.files?.profilePhoto?.[0]?.cloudinaryUrl || req.body.profilePhotoUrl || req.body.profilePhoto;
-      const rawLicenseImage = req.files?.licenseImage?.[0]?.cloudinaryUrl || req.body.licenseImageUrl || req.body.licenseImage;
+      const profilePhotoFile = req.files?.profilePhoto?.[0];
+      const licenseImageFile = req.files?.licenseImage?.[0];
+      const rcBookFile = req.files?.rcBook?.[0];
+      const aadhaarFile = req.files?.aadhaar?.[0];
+      const panFile = req.files?.pan?.[0];
+      const vehicleImageFile = req.files?.vehicleImage?.[0];
+
+      const rawProfilePhoto = profilePhotoFile?.cloudinaryUrl || req.body.profilePhotoUrl || req.body.profilePhoto;
+      const rawLicenseImage = licenseImageFile?.cloudinaryUrl || req.body.licenseImageUrl || req.body.licenseImage;
+      const rawRcBook = rcBookFile?.cloudinaryUrl || req.body.rcBookUrl || req.body.rcBook;
+      const rawAadhaar = aadhaarFile?.cloudinaryUrl || req.body.aadhaarUrl || req.body.aadhaar;
+      const rawPan = panFile?.cloudinaryUrl || req.body.panUrl || req.body.pan;
+      const rawVehicleImage = vehicleImageFile?.cloudinaryUrl || req.body.vehicleImageUrl || req.body.vehicleImage;
+
       const drivingLicenceNumber = req.body.drivingLicenceNumber || req.body.licenseNumber;
 
       const profilePhotoUrl = formatAssetUrl(rawProfilePhoto);
       const licenseImageUrl = formatAssetUrl(rawLicenseImage);
+      const rcBookUrl = formatAssetUrl(rawRcBook);
+      const aadhaarUrl = formatAssetUrl(rawAadhaar);
+      const panUrl = formatAssetUrl(rawPan);
+      const vehicleImageUrl = formatAssetUrl(rawVehicleImage);
+
+      const newPublicIds = {};
+      if (profilePhotoFile?.publicId) newPublicIds.profilePhoto = profilePhotoFile.publicId;
+      if (licenseImageFile?.publicId) newPublicIds.drivingLicense = licenseImageFile.publicId;
+      if (rcBookFile?.publicId) newPublicIds.rcBook = rcBookFile.publicId;
+      if (aadhaarFile?.publicId) newPublicIds.aadhaar = aadhaarFile.publicId;
+      if (panFile?.publicId) newPublicIds.pan = panFile.publicId;
+      if (vehicleImageFile?.publicId) newPublicIds.vehicleImage = vehicleImageFile.publicId;
 
       const fieldsToUpdate = [];
       const values = [];
@@ -122,14 +146,39 @@ export const DriverController = {
         );
       }
 
+      // Update driver_documents in MySQL if available
+      try {
+        const [dpRows] = await db.query('SELECT id FROM driver_profiles WHERE profile_id = ?', [profileId]);
+        if (dpRows && dpRows.length > 0) {
+          const driverIntId = dpRows[0].id;
+          await db.query('INSERT IGNORE INTO driver_documents (driver_id) VALUES (?)', [driverIntId]);
+          const docUpdateFields = [];
+          const docValues = [];
+          if (profilePhotoUrl) { docUpdateFields.push('profile_photo = ?'); docValues.push(profilePhotoUrl); }
+          if (licenseImageUrl) { docUpdateFields.push('license_photo = ?'); docValues.push(licenseImageUrl); }
+          if (rcBookUrl) { docUpdateFields.push('rc_book_photo = ?'); docValues.push(rcBookUrl); }
+          if (docUpdateFields.length > 0) {
+            docValues.push(driverIntId);
+            await db.query(`UPDATE driver_documents SET ${docUpdateFields.join(', ')} WHERE driver_id = ?`, docValues);
+          }
+        }
+      } catch (err) {
+        console.warn('[driverController] MySQL driver_documents update failed:', err.message);
+      }
+
       // Sync MongoDB document record
       try {
         const { default: DocumentService } = await import('../services/documentService.js');
         await DocumentService.updateDriverDocuments(profileId, {
           profilePhoto: profilePhotoUrl,
           drivingLicense: licenseImageUrl,
+          rcBook: rcBookUrl,
+          aadhaar: aadhaarUrl,
+          pan: panUrl,
+          vehicleImage: vehicleImageUrl,
           licenseNumber: drivingLicenceNumber,
-          status: 'pending'
+          status: 'pending',
+          newPublicIds
         });
       } catch (err) {
         console.warn('[driverController] Failed to sync MongoDB documents on upload:', err.message);
@@ -154,6 +203,10 @@ export const DriverController = {
           profile_photo_url: profilePhotoUrl,
           driving_licence_image: licenseImageUrl,
           license_image_url: licenseImageUrl,
+          rc_book_url: rcBookUrl,
+          aadhaar_url: aadhaarUrl,
+          pan_url: panUrl,
+          vehicle_image_url: vehicleImageUrl,
           driving_licence_number: drivingLicenceNumber
         }
       });
