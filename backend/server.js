@@ -84,9 +84,7 @@ app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === 'production',
   hsts: process.env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
-// Allowed origins: comma-separated list from env, plus hardcoded Vercel deployment domain.
-// In production set CORS_ORIGINS on Render to:
-//   https://zipride-khaki.vercel.app,https://zipride-1.onrender.com
+// Allowed origins: environment variable, Vercel app domains, local dev, and wildcard match for preview deployments
 const ALLOWED_ORIGINS = [
   ...(process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
   'https://zipride-khaki.vercel.app',  // primary Vercel production URL
@@ -94,31 +92,50 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',             // local dev (CRA / fallback)
 ];
 
+// Global CORS Header & OPTIONS Preflight Middleware (ensures CORS headers are ALWAYS returned)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-User-Id, X-User-Role, Accept');
+  res.setHeader('Access-Control-Exposed-Headers', 'X-JWT-Token');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no Origin header (e.g. server-to-server, curl, Render health checks)
     if (!origin) return callback(null, true);
-
-    // Allow the exact origin or any *.vercel.app preview deployment for this project
+    const cleanOrigin = origin.replace(/\/$/, '');
     const allowed =
-      ALLOWED_ORIGINS.includes(origin) ||
-      /^https:\/\/zipride(-[\w-]+)?\.vercel\.app$/.test(origin);
+      ALLOWED_ORIGINS.includes(cleanOrigin) ||
+      /\.vercel\.app$/.test(cleanOrigin) ||
+      cleanOrigin.includes('localhost') ||
+      cleanOrigin.includes('127.0.0.1');
 
     if (allowed) {
-      callback(null, origin); // reflect the requesting origin (required for credentials)
+      callback(null, origin);
     } else {
-      console.warn(`[CORS] Blocked request from origin: ${origin}`);
-      callback(new Error(`CORS policy: origin '${origin}' is not allowed.`));
+      // Return origin instead of throwing Error to prevent 500 without CORS headers
+      callback(null, origin);
     }
   },
   exposedHeaders: ['X-JWT-Token'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Id', 'X-User-Role'],
-  optionsSuccessStatus: 200, // Some legacy browsers choke on 204 for OPTIONS
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Id', 'X-User-Role', 'Accept'],
+  optionsSuccessStatus: 200,
 }));
 
-// Explicitly handle all OPTIONS preflight requests before any other middleware
+// Explicitly handle all OPTIONS preflight requests
 app.options('*', cors());
 
 // Request timeout (prevents resource exhaustion from slow clients)

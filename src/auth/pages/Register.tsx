@@ -538,7 +538,7 @@ export function Register() {
 
                   {/* Vehicle Details */}
                   <div className="space-y-3 rounded-xl bg-background/50 p-3 border border-border/60">
-                    <p className="text-xs font-bold text-muted-foreground">Vehicle Details</p>
+                    <p className="text-xs font-bold text-muted-foreground">Vehicle Details (Optional)</p>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleMake">
