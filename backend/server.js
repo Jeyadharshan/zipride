@@ -241,7 +241,7 @@ app.use('/api/v2/', (req, res) => {
 });
 
 // File upload endpoint for the Supabase mock client (uploads directly to Cloudinary)
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+const handleSingleUpload = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: { message: 'No file uploaded' } });
   }
@@ -268,8 +268,12 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     console.error('[Upload API] Error saving file to Cloudinary:', err.message);
     return res.status(500).json({ success: false, error: { message: err.message } });
   }
-});
+};
 
+app.post('/api/upload', upload.single('file'), handleSingleUpload);
+app.post('/api/v1/upload', upload.single('file'), handleSingleUpload);
+app.post('/api/uploads', upload.single('file'), handleSingleUpload);
+app.post('/api/v1/uploads', upload.single('file'), handleSingleUpload);
 
 // 6. Transparent proxy mapping endpoint for backward compatibility with supabase.from() client queries
 app.post('/api/query', AdminController.executeQuery);

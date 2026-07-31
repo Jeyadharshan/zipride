@@ -60,17 +60,24 @@ export async function apiFetch(input: string, init?: RequestInit, retries = 2): 
   };
 
   let attempt = 0;
-  while (attempt <= retries) {
+  const maxRetries = Math.max(retries, 3);
+  while (attempt <= maxRetries) {
     try {
       const response = await fetch(url, options);
+      if ((response.status === 502 || response.status === 503 || response.status === 504) && attempt < maxRetries) {
+        attempt++;
+        console.warn(`[apiFetch] Server cold-starting (${response.status}). Retrying in 2.5s (attempt ${attempt}/${maxRetries})…`);
+        await new Promise((res) => setTimeout(res, 2500));
+        continue;
+      }
       return response;
     } catch (err: any) {
       attempt++;
-      if (attempt > retries) {
+      if (attempt > maxRetries) {
         throw err;
       }
-      console.warn(`[apiFetch] Network glitch encountered (${err.message}). Retrying request (attempt ${attempt}/${retries})…`);
-      await new Promise((res) => setTimeout(res, 1000));
+      console.warn(`[apiFetch] Network glitch encountered (${err.message}). Retrying in 1.5s (attempt ${attempt}/${maxRetries})…`);
+      await new Promise((res) => setTimeout(res, 1500));
     }
   }
 
