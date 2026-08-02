@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: zipride_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=zipride
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=Abirami@27
+      - JWT_SECRET=zipride_production_jwt_secret_key_2026
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    container_name: zipride_mysql
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=Abirami@27
+      - MYSQL_DATABASE=zipride
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
