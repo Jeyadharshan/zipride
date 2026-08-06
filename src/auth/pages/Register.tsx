@@ -5,6 +5,7 @@ import { LogoMark, Logo } from "@/shared/components/brand/Logo";
 import { Reveal } from "@/shared/components/kit/Reveal";
 import { supabase } from "@/lib/supabase";
 import { setupRecaptcha, sendOtpToPhone, setPendingVerification } from "@/lib/firebase/auth";
+import { apiFetch } from "@/lib/api";
 
 export function Register() {
   const [fullName, setFullName] = useState("");
@@ -42,12 +43,18 @@ export function Register() {
     e.preventDefault();
     if (loading) return;
 
-    const digitsOnly = rawPhone.replace(/\D/g, "");
-    if (!digitsOnly || digitsOnly.length < 7) {
-      alert("Mobile phone number is required (at least 7 to 10 digits).");
+    if (!username.trim()) {
+      alert("Username is required.");
       return;
     }
-
+    if (!email.trim() || !email.includes("@")) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+    if (!gender) {
+      alert("Please select your gender.");
+      return;
+    }
     if (password !== confirmPassword) {
       alert("Passwords do not match.");
       return;
@@ -83,17 +90,10 @@ export function Register() {
     setLoading(true);
 
     try {
-      // 1. Perform duplicate checks on Username, Email, and Phone
+      // 1. Perform duplicate checks on Username and Email via Supabase/API
       const { data: dupEmail } = await supabase.from("profiles").select("id").eq("email", email.trim().toLowerCase()).maybeSingle();
       if (dupEmail) {
         alert("Email address already in use.");
-        setLoading(false);
-        return;
-      }
-
-      const { data: dupPhone } = await supabase.from("profiles").select("id").eq("phone", formattedPhone).maybeSingle();
-      if (dupPhone) {
-        alert("Phone number already registered.");
         setLoading(false);
         return;
       }
@@ -125,20 +125,32 @@ export function Register() {
         licenseImageUrl = licenseData?.path ? `/uploads/${licenseData.path}` : `/uploads/${licenseName}`;
       }
 
-      // 3. Setup recaptcha and trigger Firebase OTP send
-      const appVerifier = setupRecaptcha("recaptcha-container");
-      const confirmationResult = await sendOtpToPhone(formattedPhone, appVerifier);
+      // 3. Send Email OTP verification code
+      const otpRes = await apiFetch("/api/auth/send-email-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() })
+      });
+      const otpData = await otpRes.json();
+      if (!otpRes.ok) {
+        throw new Error(otpData.message || "Failed to send verification code to email.");
+      }
 
-      // 4. Store verification payload globally
+      // Auto-generate phone if omitted
+      const derivedPhone = formattedPhone.length > 5 ? formattedPhone : `+91${Math.floor(6000000000 + Math.random() * 3999999999)}`;
+      const derivedName = fullName.trim() || username.trim();
+
+      // 4. Store verification payload globally with Email OTP flag
       setPendingVerification({
-        confirmationResult,
+        otpType: "email",
+        email: email.trim().toLowerCase(),
         registrationDetails: {
           isNewUser: true,
           role,
-          name: fullName,
-          email,
-          phone: formattedPhone,
-          username,
+          name: derivedName,
+          email: email.trim().toLowerCase(),
+          phone: derivedPhone,
+          username: username.trim().toLowerCase(),
           password,
           dob: dob || null,
           gender: gender || null,
@@ -156,6 +168,8 @@ export function Register() {
           } : null
         }
       });
+
+      alert(`Verification code sent to email ${email.trim()}. ${otpData.devOtp ? "Code: " + otpData.devOtp : ""}`);
 
       // 5. Navigate to verification code input page
       navigate({ to: "/otp" });
@@ -202,112 +216,15 @@ export function Register() {
             </span>
             <h2 className="mt-3 text-3xl font-extrabold">Create ZipRide Account</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Please enter your details below to register
+              Please enter your Username, Email ID, Password, and Gender to register
             </p>
 
             <form className="mt-6 space-y-4" onSubmit={handleRegisterSubmit}>
               <div className="grid gap-4 sm:grid-cols-2">
-                {/* Full Name */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="fullName">
-                    Full Name
-                  </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      id="fullName"
-                      type="text"
-                      placeholder="Rahul Kumar"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="email">
-                    Email Address
-                  </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      id="email"
-                      type="email"
-                      placeholder="name@example.com"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Mobile Number with Country Code Dropdown */}
-                <div className="col-span-1">
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="rawPhone">
-                    Mobile Number <span className="text-destructive">*</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {/* Country Code Picker */}
-                    <div className="relative flex items-center rounded-2xl border border-input bg-muted/40 px-2.5 py-3 shadow-sm focus-within:ring-2 focus-within:ring-ring shrink-0">
-                      <Phone className="h-4 w-4 text-muted-foreground mr-1 shrink-0" />
-                      <select
-                        id="countryCode"
-                        aria-label="Country Code"
-                        value={countryCode}
-                        onChange={(e) => setCountryCode(e.target.value)}
-                        className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground pr-1"
-                      >
-                        <option value="+91">🇮🇳 +91</option>
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+44">🇬🇧 +44</option>
-                        <option value="+971">🇦🇪 +971</option>
-                        <option value="+65">🇸🇬 +65</option>
-                        <option value="+61">🇦🇺 +61</option>
-                        <option value="+94">🇱🇰 +94</option>
-                        <option value="+977">🇳🇵 +977</option>
-                        <option value="+880">🇧🇩 +880</option>
-                        <option value="+966">🇸🇦 +966</option>
-                        <option value="+974">🇶🇦 +974</option>
-                        <option value="+60">🇲🇾 +60</option>
-                        <option value="+49">🇩🇪 +49</option>
-                        <option value="+33">🇫🇷 +33</option>
-                      </select>
-                    </div>
-
-                    {/* Mobile Digits Input */}
-                    <div className="flex-1 flex items-center rounded-2xl border border-input bg-background px-3 py-3 shadow-sm focus-within:ring-2 focus-within:ring-ring min-w-0">
-                      <input
-                        id="rawPhone"
-                        name="rawPhone"
-                        type="tel"
-                        inputMode="numeric"
-                        autoComplete="tel-national"
-                        placeholder="9876543210"
-                        required
-                        value={rawPhone}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^\d\s-]/g, "");
-                          setRawPhone(val);
-                        }}
-                        className="w-full bg-transparent outline-none text-sm font-semibold text-foreground placeholder:text-muted-foreground/60"
-                      />
-                    </div>
-                  </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground truncate">
-                    Format: <span className="font-bold text-primary">{formattedPhone}</span>
-                  </p>
-                </div>
-
                 {/* Username */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold" htmlFor="username">
-                    Username
+                    Username <span className="text-destructive">*</span>
                   </label>
                   <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
                     <AtSign className="h-4 w-4 text-muted-foreground" />
@@ -318,7 +235,26 @@ export function Register() {
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none text-sm"
+                      className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Email Address */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="email">
+                    Email Address <span className="text-destructive">*</span>
+                  </label>
+                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <input
+                      id="email"
+                      type="email"
+                      placeholder="name@example.com"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
                     />
                   </div>
                 </div>
@@ -328,7 +264,7 @@ export function Register() {
                 {/* Password */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold" htmlFor="password">
-                    Password
+                    Password <span className="text-destructive">*</span>
                   </label>
                   <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
                     <Lock className="h-4 w-4 text-muted-foreground" />
@@ -347,7 +283,7 @@ export function Register() {
                 {/* Confirm Password */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold" htmlFor="confirmPassword">
-                    Confirm Password
+                    Confirm Password <span className="text-destructive">*</span>
                   </label>
                   <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
                     <Lock className="h-4 w-4 text-muted-foreground" />
@@ -364,20 +300,41 @@ export function Register() {
                 </div>
               </div>
 
-              {/* Role Selection Dropdown */}
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold" htmlFor="role">
-                  I want to register as a
-                </label>
-                <select
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as "rider" | "driver")}
-                  className="w-full rounded-2xl border border-input bg-background px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="rider">Rider (Passenger)</option>
-                  <option value="driver">Driver (verification required)</option>
-                </select>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Gender */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="gender">
+                    Gender <span className="text-destructive">*</span>
+                  </label>
+                  <select
+                    id="gender"
+                    required
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value)}
+                    className="w-full rounded-2xl border border-input bg-background px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {/* Role Selection Dropdown */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="role">
+                    Register as <span className="text-destructive">*</span>
+                  </label>
+                  <select
+                    id="role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as "rider" | "driver")}
+                    className="w-full rounded-2xl border border-input bg-background px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
+                  >
+                    <option value="rider">Rider (Passenger)</option>
+                    <option value="driver">Driver (verification required)</option>
+                  </select>
+                </div>
               </div>
 
               {/* Conditional rendering for Rider field inputs */}

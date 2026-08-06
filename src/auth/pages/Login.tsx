@@ -93,20 +93,31 @@ export function Login() {
     if (loading) return;
     setLoading(true);
     try {
-      let googleEmail = "user.google@zipride.app";
-      let googleName = "Google User";
+      let googleEmail = "";
+      let googleName = "";
       let photoUrl = "";
 
       if (firebaseAuth) {
         try {
           const provider = new GoogleAuthProvider();
           const result = await signInWithPopup(firebaseAuth, provider);
-          googleEmail = result.user.email || googleEmail;
-          googleName = result.user.displayName || googleName;
+          googleEmail = result.user.email || "";
+          googleName = result.user.displayName || "";
           photoUrl = result.user.photoURL || "";
-        } catch (fbErr) {
-          console.warn("Firebase Google Sign-In fallback mode:", fbErr);
+        } catch (fbErr: any) {
+          console.warn("Firebase Google Sign-In popup:", fbErr.message);
         }
+      }
+
+      if (!googleEmail) {
+        const inputEmail = prompt("Enter your Google Account Email ID:");
+        if (!inputEmail) {
+          setLoading(false);
+          return;
+        }
+        googleEmail = inputEmail.trim();
+        const inputName = prompt("Enter your Google Account Display Name:", googleEmail.split("@")[0]);
+        googleName = inputName ? inputName.trim() : googleEmail.split("@")[0];
       }
 
       const res = await apiFetch("/api/auth/google-login", {
