@@ -14,10 +14,10 @@ export function RideType() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const chosen = VEHICLES.find((v) => v.id === sel)!;
-  const fareVal = parseInt(localStorage.getItem("booking_fare") || "198");
-  const pickupVal = localStorage.getItem("booking_pickup") || TRIP.from;
-  const dropoffVal = localStorage.getItem("booking_dropoff") || TRIP.to;
-  const distanceVal = localStorage.getItem("booking_distance") || "4.2";
+  const fareVal = parseInt(typeof window !== "undefined" ? (localStorage.getItem("booking_fare") || "198") : "198");
+  const pickupVal = typeof window !== "undefined" ? (localStorage.getItem("booking_pickup") || TRIP.from) : TRIP.from;
+  const dropoffVal = typeof window !== "undefined" ? (localStorage.getItem("booking_dropoff") || TRIP.to) : TRIP.to;
+  const distanceVal = typeof window !== "undefined" ? (localStorage.getItem("booking_distance") || "4.2") : "4.2";
 
   useEffect(() => {
     if (!profile?.id) return;

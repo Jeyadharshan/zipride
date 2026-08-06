@@ -24,7 +24,8 @@ export const RideController = {
       const {
         pickupAddress, pickupLatitude, pickupLongitude,
         dropoffAddress, dropoffLatitude, dropoffLongitude,
-        paymentMethod, vehicleType, promoCode
+        paymentMethod, vehicleType, promoCode,
+        tripType = 'one_way', isAc = false
       } = req.body;
 
       const riderId = req.user.id;
@@ -66,7 +67,7 @@ export const RideController = {
       }
 
       // 3. Compute pricing
-      const fareCalc = await FareEngine.calculateFare(route.distance, route.duration, { vehicleType, couponDiscount });
+      const fareCalc = await FareEngine.calculateFare(route.distance, route.duration, { vehicleType, couponDiscount, tripType, isAc });
 
       // 4. Generate Ride Code + OTP
       const rideCode = `ZR-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -77,6 +78,8 @@ export const RideController = {
         ride_code:          rideCode,
         rider_id:           riderId,
         ride_type:          vehicleType || 'Car',
+        trip_type:          tripType || 'one_way',
+        is_ac:              isAc ? 1 : 0,
         payment_method:     paymentMethod || 'Cash',
         pickup_address:     pickupAddress,
         pickup_latitude:    pickupLatitude,
@@ -270,8 +273,8 @@ export const RideController = {
       }
 
       const fare       = parseFloat(ride.estimated_fare || 0);
-      const commission = Math.round(fare * 0.15 * 100) / 100;
-      const driverEarn = Math.round((fare - commission) * 100) / 100;
+      const commission = 0; // Removed commission fee
+      const driverEarn = fare;
 
       conn = await db.getConnection();
       await conn.beginTransaction();
@@ -422,10 +425,10 @@ export const RideController = {
         return res.status(400).json({ success: false, message: 'Ride already finalized.' });
       }
 
-      // Cancellation fee logic — charge rider if driver already assigned
-      const driverAssigned = ['Driver Assigned', 'Driver Accepted', 'Driver Arrived'].includes(ride.ride_status);
+      // Cancellation fee logic — charge rider ONLY if driver accepted/confirmed the trip
+      const driverAcceptedOrConfirmed = ['Driver Accepted', 'Driver Assigned', 'Driver Arriving', 'Driver Arrived', 'OTP Verified', 'Ride Started'].includes(ride.ride_status);
       const [feeRow] = await db.execute(`SELECT setting_value FROM app_settings WHERE setting_key = 'cancellation_fee_rider' LIMIT 1`);
-      const cancelFee = driverAssigned && cancelledBy === 'Rider'
+      const cancelFee = (driverAcceptedOrConfirmed && cancelledBy === 'Rider')
         ? parseFloat(feeRow?.[0]?.setting_value || 20)
         : 0;
       const refundAmount = 0; // Extend with actual refund logic

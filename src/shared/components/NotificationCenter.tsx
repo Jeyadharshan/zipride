@@ -11,6 +11,7 @@ export function NotificationCenter() {
   const [toastNotification, setToastNotification] = useState<any>(null);
 
   const fetchNotifications = async () => {
+    if (typeof window === "undefined") return;
     const token = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token") || localStorage.getItem("zipride_jwt_token");
     if (!token) return;
     try {

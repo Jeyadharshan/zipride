@@ -10,7 +10,12 @@ import dotenv from 'dotenv';
 
 // Environment validation — must run before anything else
 import { validateEnv } from './utils/envValidator.js';
-dotenv.config();
+
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+if (fs.existsSync(envFile)) {
+  dotenv.config({ path: envFile });
+}
+dotenv.config(); // fallback to standard .env
 validateEnv();
 
 // Global BigInt serialization helper to prevent JSON.stringify crashes on BIGINT columns

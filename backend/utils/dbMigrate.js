@@ -355,9 +355,14 @@ export async function runDatabaseMigrations() {
       }
 
       const settings = [
-        ['commission_percentage', '15'],
-        ['base_fare_economy', '40'],
-        ['per_km_rate', '12'],
+        ['commission', '0'],
+        ['commission_percentage', '0'],
+        ['base_fare', '40'],
+        ['slab_0_15_rate', '15'],
+        ['slab_15_40_rate', '18'],
+        ['slab_40_plus_rate', '22'],
+        ['ac_surcharge_rate', '3'],
+        ['cancellation_fee_rider', '20'],
         ['per_min_rate', '2'],
         ['surge_multiplier_default', '1.0'],
         ['night_charge_percent', '10'],
@@ -369,6 +374,18 @@ export async function runDatabaseMigrations() {
           [key, value, value]
         ).catch(() => {});
       }
+
+      // Migration for rides table columns: trip_type, is_ac
+      try {
+        const [rCols] = await db.query(`SHOW COLUMNS FROM rides`);
+        const rColNames = new Set(rCols.map(c => c.Field));
+        if (!rColNames.has('trip_type')) {
+          await db.query(`ALTER TABLE rides ADD COLUMN trip_type VARCHAR(20) DEFAULT 'one_way'`).catch(() => {});
+        }
+        if (!rColNames.has('is_ac')) {
+          await db.query(`ALTER TABLE rides ADD COLUMN is_ac TINYINT(1) DEFAULT 0`).catch(() => {});
+        }
+      } catch (e) {}
     } catch (e) {}
 
     console.log('✅ Migration Completed');

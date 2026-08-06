@@ -26,9 +26,9 @@ export function Rating() {
   const { profile } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
-  const [driverName] = useState(localStorage.getItem("active_driver_name") || DRIVER.name);
-  const [driverAvatar] = useState(localStorage.getItem("active_driver_avatar") || "");
-  const [driverRating] = useState(localStorage.getItem("active_driver_rating") || "4.9");
+  const [driverName] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("active_driver_name") || DRIVER.name) : DRIVER.name);
+  const [driverAvatar] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("active_driver_avatar") || "") : "");
+  const [driverRating] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("active_driver_rating") || "4.9") : "4.9");
   const driverInitial = driverName ? driverName[0].toUpperCase() : "D";
 
   const toggle = (t: string) =>

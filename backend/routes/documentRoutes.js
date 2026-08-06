@@ -17,4 +17,7 @@ router.get('/pending', requireAuth, requireAdmin, DocumentController.getPendingV
 // Get all verifications - admin only
 router.get('/all', requireAuth, requireAdmin, DocumentController.getAllVerifications);
 
+// Run AI verification check on driver documents
+router.post('/ai-verify/:profileId', requireAuth, DocumentController.runAiVerification);
+
 export default router;

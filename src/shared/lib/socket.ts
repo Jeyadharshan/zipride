@@ -104,7 +104,7 @@ export const getSocket = (): Socket => {
 };
 
 export const registerSocketAuth = (userId?: string, role?: string) => {
-  if (socketInstance && socketInstance.connected) {
+  if (socketInstance && socketInstance.connected && typeof window !== "undefined") {
     const activeUserId =
       userId ||
       localStorage.getItem("user_id") ||

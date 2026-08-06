@@ -6,9 +6,11 @@ import { apiFetch } from "@/lib/api";
 
 export function AdminSettings() {
   const [baseFare, setBaseFare] = useState("40");
-  const [perKmRate, setPerKmRate] = useState("12");
-  const [commission, setCommission] = useState("20");
-  const [cancellationFee, setCancellationFee] = useState("25");
+  const [slab015, setSlab015] = useState("15");
+  const [slab1540, setSlab1540] = useState("18");
+  const [slab40Plus, setSlab40Plus] = useState("22");
+  const [acSurcharge, setAcSurcharge] = useState("3");
+  const [cancellationFee, setCancellationFee] = useState("20");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -22,8 +24,10 @@ export function AdminSettings() {
           }, {});
 
           if (settingsMap.base_fare) setBaseFare(settingsMap.base_fare);
-          if (settingsMap.per_km_rate) setPerKmRate(settingsMap.per_km_rate);
-          if (settingsMap.commission) setCommission(settingsMap.commission);
+          if (settingsMap.slab_0_15_rate) setSlab015(settingsMap.slab_0_15_rate);
+          if (settingsMap.slab_15_40_rate) setSlab1540(settingsMap.slab_15_40_rate);
+          if (settingsMap.slab_40_plus_rate) setSlab40Plus(settingsMap.slab_40_plus_rate);
+          if (settingsMap.ac_surcharge_rate) setAcSurcharge(settingsMap.ac_surcharge_rate);
           if (settingsMap.cancellation_fee) setCancellationFee(settingsMap.cancellation_fee);
         }
       } catch (err) {
@@ -38,12 +42,14 @@ export function AdminSettings() {
     try {
       const payload = [
         { key: "base_fare", value: baseFare },
-        { key: "per_km_rate", value: perKmRate },
-        { key: "commission", value: commission },
+        { key: "slab_0_15_rate", value: slab015 },
+        { key: "slab_15_40_rate", value: slab1540 },
+        { key: "slab_40_plus_rate", value: slab40Plus },
+        { key: "ac_surcharge_rate", value: acSurcharge },
+        { key: "commission", value: "0" },
         { key: "cancellation_fee", value: cancellationFee },
       ];
 
-      // Try backend API first
       const token =
         sessionStorage.getItem("jwt_token") ||
         localStorage.getItem("jwt_token");
@@ -59,21 +65,18 @@ export function AdminSettings() {
             body: JSON.stringify({ settings: payload }),
           });
         } catch (e) {
-          console.warn("Backend settings API unreachable, falling back to DB:", e);
+          console.warn("Backend settings API unreachable:", e);
         }
       }
 
-      // Always also upsert via Supabase proxy to keep DB in sync
       for (const item of payload) {
-        const { error } = await (supabase as any)
+        await (supabase as any)
           .from("platform_settings")
-          .upsert(item);
-        if (error) {
-          console.warn(`Failed to upsert setting ${item.key}:`, error.message);
-        }
+          .upsert(item)
+          .catch(() => {});
       }
 
-      alert("Platform settings saved successfully!");
+      alert("Distance Slab Rates & Pricing saved successfully!");
     } catch (err: any) {
       alert("Failed to save settings: " + (err.message || err));
     } finally {
@@ -128,48 +131,78 @@ export function AdminSettings() {
   };
 
   return (
-    <AdminShell title="Platform Settings" subtitle="Configure ZipRide">
+    <AdminShell title="Platform Settings" subtitle="Configure ZipRide Slab Rates & Policies">
       <div className="grid gap-6 lg:grid-cols-2 max-w-4xl">
         <div className="rounded-3xl border border-border bg-card p-6 shadow-soft">
-          <h2 className="mb-4 font-extrabold text-lg">Pricing & Commission</h2>
+          <h2 className="mb-4 font-extrabold text-lg">Kilometer-wise Slab Rates (AC & Non-AC)</h2>
+          
           <div className="mb-3">
-            <label className="mb-1.5 block text-sm font-semibold">Base fare (₹)</label>
+            <label className="mb-1 block text-xs font-semibold">Base Fare (₹)</label>
             <input
               value={baseFare}
               onChange={(e) => setBaseFare(e.target.value)}
-              className="w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+
           <div className="mb-3">
-            <label className="mb-1.5 block text-sm font-semibold">Per km rate (₹)</label>
+            <label className="mb-1 block text-xs font-semibold">0 - 15 KM Slab Rate (₹/KM)</label>
             <input
-              value={perKmRate}
-              onChange={(e) => setPerKmRate(e.target.value)}
-              className="w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+              value={slab015}
+              onChange={(e) => setSlab015(e.target.value)}
+              className="w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring font-bold text-primary"
             />
           </div>
+
           <div className="mb-3">
-            <label className="mb-1.5 block text-sm font-semibold">Commission (%)</label>
+            <label className="mb-1 block text-xs font-semibold">15 - 40 KM Slab Rate (₹/KM)</label>
             <input
-              value={commission}
-              onChange={(e) => setCommission(e.target.value)}
-              className="w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+              value={slab1540}
+              onChange={(e) => setSlab1540(e.target.value)}
+              className="w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring font-bold text-primary"
             />
           </div>
+
           <div className="mb-3">
-            <label className="mb-1.5 block text-sm font-semibold">Cancellation fee (₹)</label>
+            <label className="mb-1 block text-xs font-semibold">40+ KM Slab Rate (₹/KM)</label>
+            <input
+              value={slab40Plus}
+              onChange={(e) => setSlab40Plus(e.target.value)}
+              className="w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring font-bold text-primary"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-semibold">AC Surcharge Rate (₹/KM add-on)</label>
+            <input
+              value={acSurcharge}
+              onChange={(e) => setAcSurcharge(e.target.value)}
+              className="w-full rounded-2xl border border-sky-500/40 bg-sky-500/5 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 font-bold text-sky-600"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-semibold">Cancellation Fee (₹)</label>
             <input
               value={cancellationFee}
               onChange={(e) => setCancellationFee(e.target.value)}
-              className="w-full rounded-2xl border border-input bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              ⚠️ Note: Cancellation fee is only added if rider cancels after driver accepts/confirms.
+            </p>
           </div>
+
+          <div className="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-600">
+            ✅ Platform Commission: 0% (Driver keeps 100% of final fare)
+          </div>
+
           <button
             onClick={handleSave}
             disabled={saving}
-            className="mt-4 w-full rounded-2xl gradient-brand px-8 py-3.5 font-bold text-primary-foreground shadow-glow disabled:opacity-50"
+            className="mt-2 w-full rounded-2xl gradient-brand px-8 py-3.5 font-bold text-primary-foreground shadow-glow disabled:opacity-50 cursor-pointer"
           >
-            {saving ? "Saving Changes..." : "Save Pricing Changes"}
+            {saving ? "Saving Changes..." : "Save Slab Rates & Pricing"}
           </button>
         </div>
 

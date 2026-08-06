@@ -32,9 +32,11 @@ export function Confirm() {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const navigate = useNavigate();
 
+  const [tripType, setTripType] = useState<"one_way" | "two_way">("one_way");
+  const [isAc, setIsAc] = useState(false);
+
   const [pickupVal, setPickupVal] = useState(TRIP.from);
   const [dropoffVal, setDropoffVal] = useState(TRIP.to);
-  const [fareVal, setFareVal] = useState(TRIP.fare);
   const [distanceVal, setDistanceVal] = useState(4.2);
   const [durationVal, setDurationVal] = useState(17);
 
@@ -49,11 +51,31 @@ export function Confirm() {
   const [pickupTimeStr, setPickupTimeStr] = useState("10:00 AM");
   const [dropoffTimeStr, setDropoffTimeStr] = useState("10:17 AM");
 
+  // Dynamic Slab Fare Calculation Engine
+  const calculateSlabFare = (dist: number, isRoundTrip: boolean, acEnabled: boolean) => {
+    const effDist = isRoundTrip ? dist * 2 : dist;
+    let distFare = 0;
+    if (effDist <= 15) {
+      distFare = effDist * 15;
+    } else if (effDist <= 40) {
+      distFare = (15 * 15) + ((effDist - 15) * 18);
+    } else {
+      distFare = (15 * 15) + (25 * 18) + ((effDist - 40) * 22);
+    }
+    const acFee = acEnabled ? effDist * 3 : 0;
+    const base = 40;
+    const timeFee = Math.round(dist * 4 * 2);
+    const subtotal = base + distFare + acFee + timeFee;
+    const tax = Math.round(subtotal * 0.05);
+    return Math.round(subtotal + tax);
+  };
+
+  const fareVal = calculateSlabFare(distanceVal, tripType === "two_way", isAc);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const pVal = localStorage.getItem("booking_pickup") || TRIP.from;
       const dVal = localStorage.getItem("booking_dropoff") || TRIP.to;
-      const fVal = parseInt(localStorage.getItem("booking_fare") || TRIP.fare.toString());
       const distVal = parseFloat(localStorage.getItem("booking_distance") || "4.2");
       const durVal = parseInt(localStorage.getItem("booking_duration") || Math.ceil(distVal * 4).toString());
 
@@ -64,7 +86,6 @@ export function Confirm() {
 
       setPickupVal(pVal);
       setDropoffVal(dVal);
-      setFareVal(fVal);
       setDistanceVal(distVal);
       setDurationVal(durVal);
 
@@ -152,42 +173,13 @@ export function Confirm() {
 
   const handleConfirm = async () => {
     if (!profile?.id) {
-      alert("User profile not loaded. Please wait or log in.");
+      alert("Please log in to book a ride.");
+      navigate({ to: "/login" });
       return;
     }
-    // Tamil Nadu location verification check
-    if (pickupCoords && (pickupCoords[0] < 8.0 || pickupCoords[0] > 14.0 || pickupCoords[1] < 76.0 || pickupCoords[1] > 80.5)) {
-      alert("ZipRide only operates within Tamil Nadu, India. Please select a pickup location in Tamil Nadu.");
-      return;
-    }
-    if (dropoffCoords && (dropoffCoords[0] < 8.0 || dropoffCoords[0] > 14.0 || dropoffCoords[1] < 76.0 || dropoffCoords[1] > 80.5)) {
-      alert("ZipRide only operates within Tamil Nadu, India. Please select a dropoff location in Tamil Nadu.");
-      return;
-    }
+
     setBooking(true);
     try {
-      // Prevent duplicate active rides
-      const { data: existingActive } = await (supabase as any)
-        .from("rides")
-        .select("id, status")
-        .eq("rider_id", profile.id)
-        .in("status", [
-          "searching", "pending", "Searching",
-          "driver assigned", "assigned", "driver accepted", "accepted", "Driver Assigned", "Driver Accepted",
-          "driver arrived", "arriving", "ride started", "in_progress", "Driver Arrived", "Ride Started"
-        ])
-        .limit(1);
-
-      if (existingActive && existingActive.length > 0) {
-        alert("You already have an active ride in progress! Please complete your current ride before booking a new one.");
-        localStorage.setItem("active_ride_id", existingActive[0].id);
-        navigate({ to: "/tracking", replace: true });
-        setBooking(false);
-        return;
-      }
-
-      console.log("[Confirm Ride Page] Creating ride request for rider:", profile.id);
-      
       const rideOtp = Math.floor(1000 + Math.random() * 9000).toString();
       
       const ridePayload = {
@@ -200,15 +192,15 @@ export function Confirm() {
         dropoff_latitude: dropoffLatVal,
         dropoff_longitude: dropoffLonVal,
         fare: fareVal,
-        distance: distanceVal,
+        distance: tripType === "two_way" ? distanceVal * 2 : distanceVal,
         duration: durationVal,
         payment_method: "cash",
         payment_status: "pending" as const,
         otp: rideOtp,
+        trip_type: tripType,
+        is_ac: isAc
       };
       
-      console.log("Ride Payload", ridePayload);
-
       const { data: newRide, error } = await (supabase as any)
         .from("rides")
         .insert(ridePayload)
@@ -216,15 +208,9 @@ export function Confirm() {
         .single();
 
       if (error) {
-        console.error("Supabase Error Code:", error?.code);
-        console.error("Supabase Error Message:", error?.message);
-        console.error("Supabase Error Details:", error?.details);
-        console.error("Supabase Error Hint:", error?.hint);
-        console.error("Full Error Object:", JSON.stringify(error, null, 2));
         throw new Error(error.message);
       }
 
-      console.log("[Confirm Ride Page] Created ride successfully:", newRide);
       localStorage.setItem("active_ride_id", newRide.id);
       navigate({ to: "/searching", replace: true });
     } catch (err: any) {
@@ -247,12 +233,74 @@ export function Confirm() {
 
         <div className="mt-5 space-y-5">
           {/* Map route preview */}
-          <div className="h-[220px] overflow-hidden rounded-3xl border border-border shadow-soft">
+          <div className="h-[200px] overflow-hidden rounded-3xl border border-border shadow-soft">
             <MapView
               pickupCoords={pickupCoords}
               dropoffCoords={dropoffCoords}
               className="h-full w-full"
             />
+          </div>
+
+          {/* Selector 1: One-Way vs Two-Way (Round Trip) */}
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Trip Type</h2>
+            <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-border bg-card p-1.5 shadow-soft">
+              <button
+                type="button"
+                onClick={() => setTripType("one_way")}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-extrabold transition-all cursor-pointer",
+                  tripType === "one_way"
+                    ? "bg-primary text-primary-foreground shadow-glow"
+                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>➡️ One-Way Trip</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTripType("two_way")}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-extrabold transition-all cursor-pointer",
+                  tripType === "two_way"
+                    ? "bg-primary text-primary-foreground shadow-glow"
+                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>🔄 Two-Way (Round Trip)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Selector 2: AC vs Non-AC Vehicle Option */}
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Vehicle Comfort (AC / Non-AC)</h2>
+            <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-border bg-card p-1.5 shadow-soft">
+              <button
+                type="button"
+                onClick={() => setIsAc(false)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-extrabold transition-all cursor-pointer",
+                  !isAc
+                    ? "bg-secondary text-foreground border border-border shadow-soft"
+                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>🚘 Non-AC Vehicle</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAc(true)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-extrabold transition-all cursor-pointer",
+                  isAc
+                    ? "bg-sky-500 text-white shadow-glow"
+                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>❄️ AC Vehicle</span>
+              </button>
+            </div>
           </div>
 
           {/* Section: Trip Route */}
@@ -285,18 +333,15 @@ export function Confirm() {
             </div>
           </div>
 
-          {/* Section: Selected Vehicle */}
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Selected Vehicle</h2>
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft flex items-center gap-4">
-              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-secondary text-3xl animate-float">
-                🚕
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold">Taxi · ZipRide</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Arrives in 3 min</p>
-              </div>
+          {/* Section: Cancellation Policy Notice */}
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
+              <Tag className="h-4 w-4" />
+              <span>Free Cancellation Policy</span>
             </div>
+            <p className="mt-1 text-muted-foreground">
+              Cancelling before driver accepts is 100% free (₹0 fee). Cancellation fee is only charged if trip is confirmed by driver.
+            </p>
           </div>
 
           {/* Section: Ride Details */}
@@ -304,31 +349,15 @@ export function Confirm() {
             <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Ride Details</h2>
             <div className="rounded-2xl border border-border bg-card p-5 shadow-soft grid grid-cols-2 gap-4">
               <div>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Distance</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Total Distance</span>
                 <p className="text-lg font-extrabold text-foreground">
-                  <motion.span
-                    key={distanceVal}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: [0.5, 1.3, 1], opacity: 1 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="inline-block font-extrabold text-foreground"
-                  >
-                    {distanceVal} km
-                  </motion.span>
+                  {tripType === "two_way" ? `${distanceVal * 2} km (Round Trip)` : `${distanceVal} km`}
                 </p>
               </div>
               <div className="border-l border-border pl-4">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Est. Time</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Comfort</span>
                 <p className="text-lg font-extrabold text-foreground">
-                  <motion.span
-                    key={distanceVal}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: [0.5, 1.3, 1], opacity: 1 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="inline-block font-extrabold text-foreground"
-                  >
-                    {formatDuration(durationVal)}
-                  </motion.span>
+                  {isAc ? "❄️ AC" : "🚘 Non-AC"}
                 </p>
               </div>
             </div>
@@ -336,34 +365,20 @@ export function Confirm() {
         </div>
       </Reveal>
 
+      {/* Section: Fare Summary */}
       <Reveal delay={0.08}>
-        <div className="mt-6 flex items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
-          <Tag className="h-5 w-5 text-primary" />
-          <input
-            placeholder="Add promo code"
-            className="w-full bg-transparent text-sm outline-none"
-          />
-          <button className="text-sm font-semibold text-primary">Apply</button>
-        </div>
-
-        {/* Section: Fare Summary */}
         <div className="mt-6">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Fare Summary</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Fare Breakdown (Slab Rates)</h2>
           <div className="space-y-2 rounded-2xl bg-secondary p-4 text-sm">
-            <Row label="Ride fare" value={`₹${fareVal - 8}`} />
-            <Row label="Booking fee" value="₹8" />
-            <Row label="Promo discount" value="−₹0" />
+            <Row label="Base Fare" value="₹40" />
+            <Row label="Distance Fare" value={`₹${fareVal - (isAc ? Math.round((tripType === 'two_way' ? distanceVal * 2 : distanceVal) * 3) : 0) - 40}`} />
+            {isAc && <Row label="AC Surcharge (₹3/km)" value={`+₹${Math.round((tripType === 'two_way' ? distanceVal * 2 : distanceVal) * 3)}`} />}
+            <Row label="Platform Commission" value="₹0 (0% Fee)" />
             <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-extrabold text-foreground">
-              <span>Total Amount</span>
-              <motion.span
-                key={fareVal}
-                initial={{ scale: 0.8, color: "var(--success)" }}
-                animate={{ scale: 1, color: "inherit" }}
-                transition={{ type: "spring", stiffness: 350, damping: 12 }}
-                className="inline-block text-primary"
-              >
+              <span>Total Final Fare</span>
+              <span className="inline-block text-primary text-xl font-black">
                 ₹{fareVal}
-              </motion.span>
+              </span>
             </div>
           </div>
         </div>
@@ -372,7 +387,7 @@ export function Confirm() {
       <button
         onClick={handleConfirm}
         disabled={booking}
-        className="mt-6 w-full rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow disabled:opacity-50 hover:scale-[1.01] transition-transform"
+        className="mt-6 w-full rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow disabled:opacity-50 hover:scale-[1.01] transition-transform cursor-pointer"
       >
         {booking ? "Confirming Booking..." : `Confirm Booking · ₹${fareVal}`}
       </button>
