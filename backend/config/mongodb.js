@@ -2,6 +2,14 @@
 // MongoDB connection using Mongoose
 
 import mongoose from "mongoose";
+import dns from "dns";
+
+// Ensure reliable SRV DNS lookup for MongoDB Atlas on Windows environments
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  // Fallback silent catch
+}
 
 let isConnected = false;
 

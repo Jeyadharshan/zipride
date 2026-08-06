@@ -20,6 +20,8 @@ router.post('/register', registerRiderValidationRules, validateRequest, AuthCont
 router.post('/register/driver', driverUploads, validateDriverDocumentFiles, processUploadedFiles, AuthController.registerDriver);
 
 router.post('/login', loginValidationRules, validateRequest, AuthController.login);
+router.post('/google-login', AuthController.googleLogin);
+router.post('/phone-login', AuthController.phoneLogin);
 router.post('/logout', requireAuth, AuthController.logout);
 router.post('/reset-password', AuthController.resetPassword);
 router.post('/refresh', AuthController.refreshToken);

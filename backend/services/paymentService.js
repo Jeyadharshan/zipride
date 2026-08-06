@@ -1,17 +1,12 @@
 import crypto from 'crypto';
-import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
+import { razorpay } from '../config/razorpay.js';
 import { PaymentRepository } from '../repositories/paymentRepository.js';
 import { RideRepository } from '../repositories/rideRepository.js';
 import { DriverRepository } from '../repositories/driverRepository.js';
 import Logger from '../utils/logger.js';
 
 dotenv.config();
-
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
 
 export const PaymentService = {
   async createOrder(rideId, amount, paymentMethod = 'Razorpay') {
@@ -38,24 +33,35 @@ export const PaymentService = {
         razorpayOrderId: existingPayment?.gateway_order_id || null,
         amount: numericAmount,
         currency: 'INR',
-        key_id: process.env.RAZORPAY_KEY_ID
+        key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_dummyKey123'
       };
     }
 
-    // 2. Create Razorpay order using SDK
+    // 2. Create Razorpay order using SDK (with safe fallback if keys are missing)
     let order;
     try {
       const receiptId = `rcpt_${String(rideId).replace(/[^a-zA-Z0-9]/g, '').substring(0, 18)}_${Date.now() % 10000}`;
-      order = await razorpay.orders.create({
-        amount: amountPaise,
-        currency: 'INR',
-        receipt: receiptId,
-        notes: {
-          ride_id: String(rideId),
-          rider_id: String(ride.rider_id || ''),
-          driver_id: String(ride.driver_id || '')
-        }
-      });
+      if (razorpay) {
+        order = await razorpay.orders.create({
+          amount: amountPaise,
+          currency: 'INR',
+          receipt: receiptId,
+          notes: {
+            ride_id: String(rideId),
+            rider_id: String(ride.rider_id || ''),
+            driver_id: String(ride.driver_id || '')
+          }
+        });
+      } else {
+        // Fallback mock order for dev mode when Razorpay credentials are not provided
+        order = {
+          id: `order_demo_${Date.now()}`,
+          amount: amountPaise,
+          currency: 'INR',
+          receipt: receiptId,
+          status: 'created'
+        };
+      }
     } catch (err) {
       Logger.error('[Razorpay Order Creation Failed]:', err.message);
       throw new Error(`Razorpay Order creation failed: ${err.message}`);

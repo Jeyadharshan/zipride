@@ -31,13 +31,13 @@ export function MapPage() {
     };
   }, []);
   
-  const [fromLoc, setFromLoc] = useState(localStorage.getItem("booking_pickup") || TRIP.from);
-  const [toLoc, setToLoc] = useState(localStorage.getItem("booking_dropoff") || TRIP.to);
+  const [fromLoc, setFromLoc] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("booking_pickup") || TRIP.from) : TRIP.from);
+  const [toLoc, setToLoc] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("booking_dropoff") || TRIP.to) : TRIP.to);
   const [pickupCoords, setPickupCoords] = useState<[number, number] | null>(null);
   const [dropoffCoords, setDropoffCoords] = useState<[number, number] | null>(null);
   const [distance, setDistance] = useState(4.2);
   const [duration, setDuration] = useState(18);
-  const [fare, setFare] = useState(Number(localStorage.getItem("booking_fare") || TRIP.fare));
+  const [fare, setFare] = useState(() => typeof window !== "undefined" ? Number(localStorage.getItem("booking_fare") || TRIP.fare) : TRIP.fare);
   
   const [pricingSettings, setPricingSettings] = useState({ baseFare: 40, perKmRate: 12, maintenanceMode: false });
 

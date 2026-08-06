@@ -13,7 +13,7 @@ import { apiFetch } from "@/lib/api";
 
 
 function getAuthHeaders(): HeadersInit {
-  const jwtToken = sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token");
+  const jwtToken = typeof window !== "undefined" ? (sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token")) : "";
   return {
     "Content-Type": "application/json",
     ...(jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}),

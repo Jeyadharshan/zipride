@@ -140,16 +140,23 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 import { AuthProvider } from "@/auth/context/AuthContext";
+import { LanguageProvider } from "@/shared/context/LanguageContext";
+import { LanguageSwitcher } from "@/shared/components/LanguageSwitcher";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <div className="fixed top-4 right-4 z-50 pointer-events-auto">
+            <LanguageSwitcher />
+          </div>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+        </AuthProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

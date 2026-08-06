@@ -33,6 +33,8 @@ export function Requests() {
           distance,
           payment_method,
           ride_type,
+          trip_type,
+          is_ac,
           created_at,
           rider:profiles!rides_rider_id_fkey(full_name, phone, avatar_url)
         `)
@@ -52,6 +54,8 @@ export function Requests() {
             from: r.pickup_address,
             to: r.dropoff_address,
             km: `${r.distance || 0} km`,
+            tripType: r.trip_type === "two_way" ? "🔄 Two-Way (Round Trip)" : "➡️ One-Way",
+            isAc: r.is_ac ? "❄️ AC Vehicle" : "🚘 Non-AC Vehicle",
             pickupAway: "1.2 km",
             eta: "4 min",
             pay: r.payment_method || "UPI",
@@ -102,41 +106,26 @@ export function Requests() {
     }
   };
 
-  const handleReject = async (rideId: string) => {
-    if (rejectCount >= 2) {
-      alert("Maximum 2 rejections allowed. Please accept a ride.");
-      return;
-    }
-
-    try {
-      // Update status to cancelled in database
-      const { error } = await supabase
-        .from("rides")
-        .update({ status: "cancelled" as any })
-        .eq("id", rideId);
-
-      if (error) throw new Error(error.message);
-
-      setRejectCount(prev => prev + 1);
-      alert(`Request rejected (${rejectCount + 1}/2).`);
-      loadRequests();
-    } catch (err: any) {
-      alert("Failed to reject ride: " + err.message);
-    }
+  const handleReject = (rideId: string) => {
+    setRequests(requests.filter((r) => r.id !== rideId));
+    setRejectCount((prev) => prev + 1);
   };
 
   return (
     <DriverShell>
-      <PageHeader
-        title="Ride Requests"
-        subtitle={`Incoming trips near you · Rejections: ${rejectCount}/2`}
-      />
-      <div className="space-y-4">
+      <Reveal>
+        <PageHeader
+          title="Incoming Ride Requests"
+          subtitle="Accept rides near you. Earn 100% of the fare with ZERO commission fees."
+        />
+      </Reveal>
+
+      <div className="mt-6 space-y-4">
         {requests.length > 0 ? (
-          requests.map((r, i) => (
-            <Reveal key={r.id} delay={i * 0.06}>
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-                <div className="flex items-start gap-3 justify-between">
+          requests.map((r) => (
+            <Reveal key={r.id}>
+              <div className="rounded-3xl border border-border bg-card p-5 shadow-soft">
+                <div className="flex items-center justify-between border-b border-border/40 pb-4">
                   <div className="flex items-center gap-3">
                     <Avatar label={r.rider[0]} src={r.avatar} className="h-12 w-12" />
                     <div>
@@ -147,13 +136,26 @@ export function Requests() {
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">{r.phone || "No phone"}</p>
-                      <p className="text-[10px] text-primary/80 font-bold mt-0.5">{r.completedTrips} trips completed</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-black text-primary">₹{r.fare}</p>
-                    <span className="inline-block text-[10px] font-bold text-success-foreground bg-success/20 px-2 py-0.5 rounded-full">{r.rideType}</span>
+                    <span className="inline-block text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                      100% Driver Payout (₹0 Fee)
+                    </span>
                   </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+                  <span className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-1 text-primary">
+                    {r.tripType}
+                  </span>
+                  <span className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-500">
+                    {r.isAc}
+                  </span>
+                  <span className="rounded-xl border border-border bg-secondary px-3 py-1">
+                    {r.km}
+                  </span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs bg-secondary/50 rounded-xl p-3 border border-border/40">
                   <div>

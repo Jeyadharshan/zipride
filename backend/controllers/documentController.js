@@ -1,4 +1,5 @@
 import DocumentService from '../services/documentService.js';
+import AiVerificationService from '../services/aiVerificationService.js';
 import Logger from '../utils/logger.js';
 
 class DocumentController {
@@ -95,6 +96,35 @@ class DocumentController {
             });
         } catch (error) {
             Logger.error(`Error fetching all verifications: ${error.message}`);
+            next(error);
+        }
+    }
+
+    async runAiVerification(req, res, next) {
+        try {
+            const { profileId } = req.params;
+            const doc = await DocumentService.getDriverDocumentByProfileId(profileId);
+            const aiResult = await AiVerificationService.verifyDriverDocuments({
+                fullName: req.body.fullName || doc?.driverName || doc?.full_name,
+                licenseNumber: req.body.licenseNumber || doc?.licenseNumber || doc?.license_number,
+                profilePhoto: doc?.profilePhoto || doc?.profile_photo || req.body.profilePhoto,
+                licensePhoto: doc?.drivingLicense || doc?.license_photo || req.body.licensePhoto,
+                rcBookPhoto: doc?.rcBook || doc?.rc_book_photo || req.body.rcBookPhoto,
+                insurancePhoto: doc?.insurancePhoto || doc?.insurance_photo || req.body.insurancePhoto,
+                selfiePhoto: doc?.selfiePhoto || doc?.selfie_photo || req.body.selfiePhoto
+            });
+
+            if (aiResult.status === 'approved') {
+                await DocumentService.updateVerificationStatus(profileId, 'approved', null, 'Auto-Approved by AI Verification Engine');
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: 'AI Driver Verification completed',
+                data: aiResult
+            });
+        } catch (error) {
+            Logger.error(`Error running AI verification: ${error.message}`);
             next(error);
         }
     }

@@ -14,20 +14,26 @@ export const FareEngine = {
       isNightCharge = false,
       isPeakHour: forcePeakHour = false,
       couponDiscount = 0,
-      referralDiscount = 0
+      referralDiscount = 0,
+      tripType = 'one_way',
+      isAc = false
     } = options;
 
     let baseFareVal = null;
-    let perKmRateVal = null;
-    let commissionVal = null;
+    let slab015Val = null;
+    let slab1540Val = null;
+    let slab40PlusVal = null;
+    let acSurchargeVal = null;
     let surgePricingEnabled = false;
 
     try {
       const [settings] = await db.query('SELECT setting_key, setting_value FROM app_settings');
-      settings.forEach(s => {
+      settings?.forEach(s => {
         if (s.setting_key === 'base_fare') baseFareVal = parseFloat(s.setting_value);
-        if (s.setting_key === 'per_km_rate') perKmRateVal = parseFloat(s.setting_value);
-        if (s.setting_key === 'commission') commissionVal = parseFloat(s.setting_value);
+        if (s.setting_key === 'slab_0_15_rate') slab015Val = parseFloat(s.setting_value);
+        if (s.setting_key === 'slab_15_40_rate') slab1540Val = parseFloat(s.setting_value);
+        if (s.setting_key === 'slab_40_plus_rate') slab40PlusVal = parseFloat(s.setting_value);
+        if (s.setting_key === 'ac_surcharge_rate') acSurchargeVal = parseFloat(s.setting_value);
         if (s.setting_key === 'surge_pricing') surgePricingEnabled = s.setting_value === 'true';
       });
     } catch (err) {
@@ -35,71 +41,83 @@ export const FareEngine = {
     }
 
     const base = baseFareVal !== null && !isNaN(baseFareVal) ? baseFareVal : 40;
-    const perKm = perKmRateVal !== null && !isNaN(perKmRateVal) ? perKmRateVal : 12;
-    const comm = commissionVal !== null && !isNaN(commissionVal) ? commissionVal : 15;
+    const r0_15 = slab015Val !== null && !isNaN(slab015Val) ? slab015Val : 15;
+    const r15_40 = slab1540Val !== null && !isNaN(slab1540Val) ? slab1540Val : 18;
+    const r40Plus = slab40PlusVal !== null && !isNaN(slab40PlusVal) ? slab40PlusVal : 22;
+    const acRatePerKm = acSurchargeVal !== null && !isNaN(acSurchargeVal) ? acSurchargeVal : 3;
 
-    // Scale rates by vehicle class relative to configured Economy values
-    const rates = {
-      Economy: { base: base, perKm: perKm, perMin: 2, commission: comm },
-      Sedan: { base: Math.round(base * 1.5), perKm: Math.round(perKm * 1.25 * 100) / 100, perMin: 3, commission: comm },
-      SUV: { base: base * 2, perKm: Math.round(perKm * 1.67 * 100) / 100, perMin: 4, commission: comm },
-      Taxi: { base: base, perKm: perKm, perMin: 2, commission: comm }
-    };
+    // Handle round trip (two-way) distance calculation
+    const effectiveDistance = tripType === 'two_way' ? distanceKm * 2 : distanceKm;
 
-    const typeKey = Object.keys(rates).find(k => k.toLowerCase() === vehicleType.toLowerCase()) || 'Economy';
-    const rate = rates[typeKey];
+    // Calculate Slab-based distance fare
+    let distanceFare = 0;
+    let km0_15 = 0;
+    let km15_40 = 0;
+    let km40Plus = 0;
+
+    if (effectiveDistance <= 15) {
+      km0_15 = effectiveDistance;
+      distanceFare = km0_15 * r0_15;
+    } else if (effectiveDistance <= 40) {
+      km0_15 = 15;
+      km15_40 = effectiveDistance - 15;
+      distanceFare = (km0_15 * r0_15) + (km15_40 * r15_40);
+    } else {
+      km0_15 = 15;
+      km15_40 = 25;
+      km40Plus = effectiveDistance - 40;
+      distanceFare = (km0_15 * r0_15) + (km15_40 * r15_40) + (km40Plus * r40Plus);
+    }
+
+    // AC Surcharge calculation
+    const acSurcharge = isAc ? effectiveDistance * acRatePerKm : 0;
 
     // 1. Base Fare
-    const baseFare = rate.base;
+    const baseFare = base;
 
-    // 2. Distance Fare
-    const distanceFare = distanceKm * rate.perKm;
+    // 2. Time Fare (₹2/min)
+    const timeFare = durationMinutes * 2;
 
-    // 3. Time Fare
-    const timeFare = durationMinutes * rate.perMin;
-
-    // 4. Waiting Charge (Rs 3 per minute waiting)
+    // 3. Waiting Charge (₹3 per minute)
     const waitingCharge = waitingTimeMinutes * 3.00;
 
-    // 5. Night Charge (+10% surcharge)
+    // 4. Night Charge (+10% surcharge)
     let nightCharge = 0;
     if (isNightCharge) {
-      nightCharge = (baseFare + distanceFare + timeFare) * 0.10;
+      nightCharge = (baseFare + distanceFare + acSurcharge + timeFare) * 0.10;
     }
 
-    // 6. Peak Hour Surge (1.25x multiplier)
-    // Surge applies when:
-    //   (a) forcePeakHour flag is explicitly passed, OR
-    //   (b) surge_pricing is enabled in admin settings AND current time is a peak hour
+    // 5. Peak Hour Surge
     const peakHour = forcePeakHour || (surgePricingEnabled && isCurrentlyPeakHour());
-    let surgePricing = 1.0;
-    if (peakHour) {
-      surgePricing = 1.25;
-    }
+    const surgePricing = peakHour ? 1.25 : 1.0;
 
     // Subtotal
-    const subtotal = (baseFare + distanceFare + timeFare + waitingCharge + nightCharge) * surgePricing;
+    const subtotal = (baseFare + distanceFare + acSurcharge + timeFare + waitingCharge + nightCharge) * surgePricing;
 
-    // 7. Taxes (5% GST)
+    // 6. Taxes (5% GST)
     const tax = subtotal * 0.05;
 
     // Gross Fare
-    let grossFare = subtotal + tax;
+    const grossFare = subtotal + tax;
 
-    // 8. Apply Discounts
-    const discount = Math.min(grossFare, parseFloat(couponDiscount) + parseFloat(referralDiscount));
+    // 7. Apply Discounts
+    const discount = Math.min(grossFare, parseFloat(couponDiscount || 0) + parseFloat(referralDiscount || 0));
     const finalFare = Math.max(0, Math.round((grossFare - discount) * 100) / 100);
 
-    // Platform Commission
-    const commission = Math.round(finalFare * (rate.commission / 100) * 100) / 100;
-    const driverEarnings = Math.round((finalFare - commission) * 100) / 100;
+    // REMOVE COMMISSION FEE: Driver receives 100% of final fare
+    const commission = 0;
+    const driverEarnings = finalFare;
 
     return {
       baseFare,
-      distanceFare,
+      distanceFare: Math.round(distanceFare * 100) / 100,
+      acSurcharge: Math.round(acSurcharge * 100) / 100,
+      effectiveDistance: Math.round(effectiveDistance * 100) / 100,
+      tripType,
+      isAc: Boolean(isAc),
       timeFare,
       waitingCharge,
-      nightCharge,
+      nightCharge: Math.round(nightCharge * 100) / 100,
       surgeMultiplier: surgePricing,
       isPeakHour: peakHour,
       surgePricingEnabled,
@@ -107,7 +125,7 @@ export const FareEngine = {
       tax: Math.round(tax * 100) / 100,
       discount: Math.round(discount * 100) / 100,
       finalFare,
-      commission,
+      commission: 0,
       driverEarnings
     };
   }

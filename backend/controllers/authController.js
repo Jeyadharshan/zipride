@@ -586,6 +586,113 @@ export const AuthController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async googleLogin(req, res, next) {
+    try {
+      const { email, fullName, photoUrl, uid } = req.body;
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'Google account email is required.' });
+      }
+
+      let user = await AuthRepository.findByEmail(email);
+      if (!user) {
+        const userId = crypto.randomUUID();
+        const username = email.split('@')[0] + Math.floor(1000 + Math.random() * 9000);
+        const dummyHash = await bcrypt.hash('google_auth_sso_2026', 10);
+        const phone = '+91' + Math.floor(6000000000 + Math.random() * 3999999999);
+
+        user = await AuthRepository.createRider({
+          id: userId,
+          email,
+          fullName: fullName || email.split('@')[0],
+          phone,
+          passwordHash: dummyHash,
+          username
+        });
+        await WalletService.getBalance(userId);
+      }
+
+      const token = generateAccessToken({ id: user.id, role: user.role, email: user.email });
+      const refreshToken = generateRefreshToken({ id: user.id, role: user.role });
+
+      return res.json({
+        success: true,
+        message: 'Google Sign-In successful.',
+        data: {
+          token,
+          refreshToken,
+          user: {
+            id: user.id,
+            fullName: user.full_name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            username: user.username,
+            profile_image: photoUrl || user.profile_image
+          }
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async phoneLogin(req, res, next) {
+    try {
+      const { phone } = req.body;
+      if (!phone || phone.trim() === '') {
+        return res.status(400).json({ success: false, message: 'Phone number is required.' });
+      }
+
+      const cleanPhone = phone.trim();
+      let user = await AuthRepository.findByPhone(cleanPhone);
+      if (!user) {
+        const userId = crypto.randomUUID();
+        const username = `user_${cleanPhone.replace(/\D/g, '').slice(-8)}`;
+        const dummyHash = await bcrypt.hash('phone_otp_sso_2026', 10);
+
+        user = await AuthRepository.createRider({
+          id: userId,
+          email: `${username}@zipride.app`,
+          fullName: `Rider ${cleanPhone.slice(-4)}`,
+          phone: cleanPhone,
+          passwordHash: dummyHash,
+          username
+        });
+        await WalletService.getBalance(userId);
+      }
+
+      let verificationStatus = 'approved';
+      if (user.role === 'driver') {
+        const dp = await DriverRepository.findByProfileId(user.id);
+        verificationStatus = dp?.verification_status || 'pending';
+      }
+
+      const token = generateAccessToken({ id: user.id, role: user.role, phone: user.phone });
+      const refreshToken = generateRefreshToken({ id: user.id, role: user.role });
+
+      return res.json({
+        success: true,
+        message: 'Phone login successful.',
+        data: {
+          token,
+          refreshToken,
+          verificationStatus,
+          user: {
+            id: user.id,
+            fullName: user.full_name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            username: user.username,
+            profile_image: user.profile_image
+          }
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
   }
 };
 

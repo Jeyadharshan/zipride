@@ -30,8 +30,8 @@ const RECENT = [
 
 export function SearchPage() {
   const navigate = useNavigate();
-  const [fromLoc, setFromLoc] = useState(localStorage.getItem("booking_pickup") || TRIP.from);
-  const [toLoc, setToLoc] = useState(localStorage.getItem("booking_dropoff") || TRIP.to);
+  const [fromLoc, setFromLoc] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("booking_pickup") || TRIP.from) : TRIP.from);
+  const [toLoc, setToLoc] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("booking_dropoff") || TRIP.to) : TRIP.to);
   const [pricingSettings, setPricingSettings] = useState({ baseFare: 40, perKmRate: 12, maintenanceMode: false });
 
   useEffect(() => {

@@ -220,6 +220,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     let storedSession =
       sessionStorage.getItem("rider_session") ||
       sessionStorage.getItem("driver_session") ||
@@ -290,7 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         await fetchProfile(firebaseUser);
       } else {
-        if (!sessionStorage.getItem("rider_session") && !sessionStorage.getItem("driver_session")) {
+        if (typeof window !== "undefined" && !sessionStorage.getItem("rider_session") && !sessionStorage.getItem("driver_session")) {
           setProfile(null);
           setDriverProfile(null);
         }
@@ -303,14 +305,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Handle Role-Based Routing
   useEffect(() => {
-    if (loading) return;
+    if (loading || typeof window === "undefined") return;
 
     const pathname = window.location.pathname;
     const activeProfile = profile;
 
     const navigateFast = (url: string) => {
-      window.history.replaceState({}, "", url);
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      if (typeof window !== "undefined") {
+        window.history.replaceState({}, "", url);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }
     };
 
     if (activeProfile) {
@@ -351,6 +355,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } else if (
       !profile &&
+      typeof window !== "undefined" &&
       !sessionStorage.getItem("rider_session") &&
       !sessionStorage.getItem("driver_session") &&
       !sessionStorage.getItem("admin_session")
