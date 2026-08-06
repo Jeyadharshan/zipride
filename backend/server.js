@@ -366,11 +366,12 @@ CronService.initializeSchedulers();
 // 10. Initialize MongoDB connection — used for audit logs, tracking history, notifications.
 // connectMongoDB() prints ✅ / ❌ internally; no duplicate log needed here.
 try {
-  await connectMongoDB();
-  await ensureMongoIndexes();
+  const mongoDbInstance = await connectMongoDB();
+  if (mongoDbInstance) {
+    await ensureMongoIndexes();
+  }
 } catch (err) {
-  console.error(`❌ MongoDB Connection Failed: ${err.message}`);
-  console.error('[MongoDB] App continues with MySQL only — MongoDB-backed features (audit logs, tracking history, notifications) will be unavailable.');
+  console.log('[MongoDB] App running in primary TiDB MySQL mode.');
 }
 
 // Run database column migrations
