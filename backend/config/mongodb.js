@@ -55,8 +55,11 @@ export async function connectMongoDB() {
     }
 
     isConnected = false;
-    console.error(`❌ MongoDB Connection Failed: ${err.message}`);
-    console.warn('💡 Tip: If using Render, ensure MONGODB_URI in Render Dashboard includes the correct database user credentials & authSource=admin.');
+    if (err.message.includes('auth') || err.message.includes('Authentication')) {
+      console.log('ℹ️  MongoDB: Optional secondary database offline (Atlas authentication skipped) — primary app running on TiDB Cloud MySQL.');
+    } else {
+      console.log(`ℹ️  MongoDB: Optional secondary database offline (${err.message}) — primary app running on TiDB Cloud MySQL.`);
+    }
     return null;
   }
 }
