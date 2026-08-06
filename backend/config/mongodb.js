@@ -14,7 +14,7 @@ try {
 let isConnected = false;
 
 export async function connectMongoDB() {
-  const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+  let mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
 
   if (!mongoUri || mongoUri.trim() === '') {
     console.warn('⚠️  MONGODB_URI environment variable is missing.');
@@ -26,18 +26,37 @@ export async function connectMongoDB() {
     return mongoose.connection.db;
   }
 
-  try {
-    await mongoose.connect(mongoUri, {
+  const tryConnect = async (uri) => {
+    return mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000,
     });
+  };
 
+  try {
+    await tryConnect(mongoUri);
     isConnected = true;
     console.log('✅ MongoDB Connected');
     return mongoose.connection.db;
-
   } catch (err) {
+    // Retry with authSource=admin if initial attempt had authentication issues
+    if (err.message.includes('auth') || err.message.includes('Authentication')) {
+      if (!mongoUri.includes('authSource=')) {
+        const separator = mongoUri.includes('?') ? '&' : '?';
+        const retryUri = `${mongoUri}${separator}authSource=admin`;
+        try {
+          await tryConnect(retryUri);
+          isConnected = true;
+          console.log('✅ MongoDB Connected (with authSource=admin)');
+          return mongoose.connection.db;
+        } catch (retryErr) {
+          err = retryErr;
+        }
+      }
+    }
+
     isConnected = false;
     console.error(`❌ MongoDB Connection Failed: ${err.message}`);
+    console.warn('💡 Tip: If using Render, ensure MONGODB_URI in Render Dashboard includes the correct database user credentials & authSource=admin.');
     return null;
   }
 }
