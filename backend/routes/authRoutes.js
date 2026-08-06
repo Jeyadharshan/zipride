@@ -22,6 +22,8 @@ router.post('/register/driver', driverUploads, validateDriverDocumentFiles, proc
 router.post('/login', loginValidationRules, validateRequest, AuthController.login);
 router.post('/google-login', AuthController.googleLogin);
 router.post('/phone-login', AuthController.phoneLogin);
+router.post('/send-email-otp', AuthController.sendEmailOtp);
+router.post('/verify-email-otp', AuthController.verifyEmailOtp);
 router.post('/logout', requireAuth, AuthController.logout);
 router.post('/reset-password', AuthController.resetPassword);
 router.post('/refresh', AuthController.refreshToken);
