@@ -159,8 +159,8 @@ const apiLogStream = fs.createWriteStream(path.join(logsDir, 'api.log'), { flags
 app.use(morgan('combined', { stream: apiLogStream }));
 app.use(morgan('dev')); // Console log requests
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve static uploaded media with cross-origin CORS support and fallback placeholder for missing files
 app.use('/uploads', (req, res, next) => {

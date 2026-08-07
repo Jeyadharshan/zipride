@@ -91,10 +91,7 @@ export const sendOtpToPhone = async (
   const formatted = formatPhoneNumber(phoneNumber);
   console.log("[Firebase Auth] Simulating OTP for phone number:", formatted);
   
-  // Alert the user about the test code
-  setTimeout(() => {
-    alert("Test OTP code for verification is: 123456");
-  }, 100);
+  // OTP is sent directly to registered email/phone
 
   return {
     verificationId: "mock-verification-id",

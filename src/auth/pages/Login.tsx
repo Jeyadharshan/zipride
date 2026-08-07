@@ -151,8 +151,7 @@ export function Login() {
       return;
     }
     setOtpSent(true);
-    setOtpCode("1234"); // Default fast demo OTP
-    alert("OTP sent to " + phoneNumber + ". Demo OTP: 1234");
+    // OTP sent to registered number
   };
 
   const handlePhoneVerify = async (e: React.FormEvent) => {
