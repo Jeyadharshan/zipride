@@ -248,13 +248,12 @@ export function Otp() {
                   setTimer(28);
                   if (pending?.registrationDetails?.email) {
                     try {
-                      const res = await apiFetch("/api/auth/send-email-otp", {
+                      await apiFetch("/api/auth/send-email-otp", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ email: pending.registrationDetails.email })
                       });
-                      const d = await res.json();
-                      alert(`Resent OTP to email. ${d.devOtp ? "Code: " + d.devOtp : ""}`);
+                      // OTP sent directly to registered email
                     } catch (e) {}
                   }
                 }}

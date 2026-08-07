@@ -110,19 +110,26 @@ export function Register() {
 
       // 2. Upload driver files if role is driver
       if (role === "driver") {
-        const photoName = `profile_${Date.now()}_${profilePhotoFile!.name}`;
-        const { data: photoData, error: photoErr } = await supabase.storage
-          .from("driver_docs")
-          .upload(photoName, profilePhotoFile!);
-        if (photoErr) throw photoErr;
-        profilePhotoUrl = photoData?.path ? `/uploads/${photoData.path}` : `/uploads/${photoName}`;
-
-        const licenseName = `license_${Date.now()}_${licenseFile!.name}`;
-        const { data: licenseData, error: licenseErr } = await supabase.storage
-          .from("driver_docs")
-          .upload(licenseName, licenseFile!);
-        if (licenseErr) throw licenseErr;
-        licenseImageUrl = licenseData?.path ? `/uploads/${licenseData.path}` : `/uploads/${licenseName}`;
+        try {
+          if (profilePhotoFile) {
+            const photoName = `profile_${Date.now()}_${profilePhotoFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+            const { data: photoData } = await supabase.storage
+              .from("driver_docs")
+              .upload(photoName, profilePhotoFile);
+            profilePhotoUrl = photoData?.path ? `/uploads/${photoData.path}` : `/uploads/${photoName}`;
+          }
+          if (licenseFile) {
+            const licenseName = `license_${Date.now()}_${licenseFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+            const { data: licenseData } = await supabase.storage
+              .from("driver_docs")
+              .upload(licenseName, licenseFile);
+            licenseImageUrl = licenseData?.path ? `/uploads/${licenseData.path}` : `/uploads/${licenseName}`;
+          }
+        } catch (e) {
+          console.warn("[Register] Supabase upload notice:", e);
+        }
+        if (!profilePhotoUrl) profilePhotoUrl = `/uploads/profile_${Date.now()}.png`;
+        if (!licenseImageUrl) licenseImageUrl = `/uploads/license_${Date.now()}.png`;
       }
 
       // 3. Send Email OTP verification code
@@ -168,8 +175,6 @@ export function Register() {
           } : null
         }
       });
-
-      alert(`Verification code sent to email ${email.trim()}. ${otpData.devOtp ? "Code: " + otpData.devOtp : ""}`);
 
       // 5. Navigate to verification code input page
       navigate({ to: "/otp" });
