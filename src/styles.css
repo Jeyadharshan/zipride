@@ -5,13 +5,14 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * ZipRide Design System:
- * - Font: Full Times New Roman / Classic Serif Style
- * - Color Palette (3-Color Harmony): 
+ * ZipRide Dual-Typography & High-Accessibility Design System:
+ * - Headings & Brand Titles: Times New Roman / Classic Editorial Serif Style ("Times New Roman", "Tinos", "EB Garamond", Georgia, serif)
+ * - Body Text, Buttons, Forms & UI Elements: Modern Clean Sans-Serif ("Plus Jakarta Sans", sans-serif)
+ * - Harmonized 3-Color Palette: 
  *     1. Deep Elephant Charcoal (Slate Dark)
  *     2. Soft Elephant Silver/Mist (Ivory/Light Slate)
- *     3. Vibrant Emerald Green (Primary/Accent Green)
- * - Ultra-Smooth Animations & Micro-interactions
+ *     3. Vibrant Emerald Green (Primary Accent & Action Color)
+ * - Accessible focus indicators & ultra-smooth micro-interactions
  */
 
 @theme inline {
@@ -61,14 +62,14 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-sans: "Times New Roman", Times, "Tinos", "EB Garamond", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Times New Roman", Times, "Tinos", "EB Garamond", Georgia, serif;
 }
 
 :root {
   --radius: 1rem;
 
-  /* 3-Color Harmony (Light): 
+  /* 3-Color Harmony (Light Mode): 
      1. Elephant Silver Background: oklch(0.975 0.008 260)
      2. Elephant Charcoal Text: oklch(0.22 0.035 260)
      3. Lush Emerald Green Accent: oklch(0.60 0.22 155)
@@ -144,7 +145,7 @@
 }
 
 .dark {
-  /* 3-Color Harmony (Dark): 
+  /* 3-Color Harmony (Dark Mode): 
      1. Deep Elephant Charcoal Background: oklch(0.14 0.025 260)
      2. Soft Elephant Silver Text: oklch(0.96 0.01 260)
      3. Vivid Emerald Green Highlight: oklch(0.66 0.22 155)
@@ -225,15 +226,26 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: "Times New Roman", Times, "Tinos", "EB Garamond", Georgia, serif !important;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Dual Typography Hierarchy:
+     Headings & Brand Titles use Times New Roman / Classic Editorial Serif
+     Body Text, Buttons, Forms & UI Elements use Modern Clean Sans
+  */
   h1,
   h2,
   h3,
   h4,
   h5,
+  .font-serif,
+  .font-display,
+  .heading-serif {
+    font-family: var(--font-serif) !important;
+    letter-spacing: -0.015em;
+  }
+
   h6,
   p,
   span,
@@ -242,8 +254,18 @@
   input,
   select,
   textarea,
-  label {
-    font-family: "Times New Roman", Times, "Tinos", "EB Garamond", Georgia, serif !important;
+  label,
+  table,
+  td,
+  th,
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+
+  /* Enhanced focus & accessibility outline */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
   }
 }
 
@@ -357,13 +379,13 @@
   animation: smooth-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Smooth hover micro-animations for interactive elements */
+/* Smooth hover micro-animations & accessible touch targets */
 button, a, input, select, .card-surface {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 button:hover, .btn-hover:hover {
-  transform: translateY(-1px);
+  transform: translateY(-1.5px);
 }
 
 button:active {
