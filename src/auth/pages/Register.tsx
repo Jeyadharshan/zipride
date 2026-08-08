@@ -91,7 +91,8 @@ export function Register() {
                 email: result.user.email,
                 fullName: result.user.displayName || result.user.email.split("@")[0],
                 photoUrl: result.user.photoURL || "",
-                firebaseUid: result.user.uid || ""
+                firebaseUid: result.user.uid || "",
+                role
               })
             });
             const data = await res.json();
@@ -127,7 +128,8 @@ export function Register() {
         body: JSON.stringify({
           email: userEmail.trim(),
           fullName: userName.trim(),
-          photoUrl: ""
+          photoUrl: "",
+          role
         })
       });
       const data = await res.json();

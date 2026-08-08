@@ -593,11 +593,12 @@ export const AuthController = {
 
   async googleLogin(req, res, next) {
     try {
-      const { email, fullName, photoUrl, uid } = req.body;
+      const { email, fullName, photoUrl, uid, role } = req.body;
       if (!email) {
         return res.status(400).json({ success: false, message: 'Google account email is required.' });
       }
 
+      const targetRole = (role === 'driver') ? 'driver' : 'rider';
       let user = await AuthRepository.findByEmail(email);
       const googleFullName = (fullName && fullName.trim()) ? fullName.trim() : email.split('@')[0];
       const baseSlug = googleFullName.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
@@ -614,21 +615,36 @@ export const AuthController = {
         const dummyHash = await bcrypt.hash('google_auth_sso_2026', 10);
         const phone = '+91' + Math.floor(6000000000 + Math.random() * 3999999999);
 
-        user = await AuthRepository.createRider({
-          id: userId,
-          email,
-          fullName: googleFullName,
-          phone,
-          passwordHash: dummyHash,
-          username: targetUsername
-        });
+        const seed = (targetUsername || googleFullName || email || 'USER').replace(/[^a-zA-Z0-9]/g, '');
+        const cleanSeed = (seed.substring(0, 4) || 'ZIPR').toUpperCase().padEnd(4, 'X');
+        const referralCode = `ZR${cleanSeed}${Math.floor(1000 + Math.random() * 9000)}`;
+
+        await dbQuery(
+          `INSERT INTO profiles (id, username, password_hash, full_name, phone, email, role, referral_code, account_status, phone_verified, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())`,
+          [userId, targetUsername, dummyHash, googleFullName, phone, email, targetRole, referralCode]
+        ).catch(() => {});
 
         if (photoUrl) {
           await dbQuery('UPDATE profiles SET profile_image = ? WHERE id = ?', [photoUrl, userId]).catch(() => {});
         }
 
-        await WalletService.getBalance(userId);
-      } else {
+        await WalletService.getBalance(userId).catch(() => {});
+        const [rows] = await dbQuery(`SELECT * FROM profiles WHERE id = ? LIMIT 1`, [userId]).catch(() => [[]]);
+        user = rows?.[0] || {
+          id: userId,
+          username: targetUsername,
+          full_name: googleFullName,
+          email,
+          phone,
+          role: targetRole,
+          referral_code: referralCode,
+          profile_image: photoUrl || ''
+        };
+      } else if (role && user.role !== targetRole) {
+        await dbQuery('UPDATE profiles SET role = ? WHERE id = ?', [targetRole, user.id]).catch(() => {});
+        user.role = targetRole;
+      }
         // Update user's profile image or full_name if missing
         if (photoUrl && (!user.profile_image || user.profile_image.includes('default'))) {
           await dbQuery('UPDATE profiles SET profile_image = ? WHERE id = ?', [photoUrl, user.id]).catch(() => {});
