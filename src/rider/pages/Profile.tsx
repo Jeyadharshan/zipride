@@ -35,9 +35,10 @@ export function Profile() {
   const [stats, setStats] = useState({ totalRides: 0, rating: 5.0 });
   const [reviewsList, setReviewsList] = useState<any[]>([]);
 
-  // Profile Edit States (Directly editable on page load)
-  const [isEditing, setIsEditing] = useState(true);
+  // Profile Edit States
+  const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editDob, setEditDob] = useState("");
   const [editGender, setEditGender] = useState("");
@@ -86,6 +87,7 @@ export function Profile() {
 
         // Initialize Edit values
         setEditName(profile.full_name || "");
+        setEditPhone(profile.phone || "");
         setEditEmail(profile.email || "");
         setEditDob(toInputDate(profile.date_of_birth || (profile as any).dob || ""));
         setEditGender(normalizeGender(profile.gender));
@@ -95,36 +97,39 @@ export function Profile() {
     loadRiderStats();
   }, [profile]);
 
-  const startEditing = () => {
-    setEditName(profile?.full_name || "");
-    setEditEmail(profile?.email || "");
-    setEditDob(toInputDate(profile?.date_of_birth || (profile as any)?.dob || ""));
-    setEditGender(normalizeGender(profile?.gender));
-    setEditAddress(profile?.address || "");
-    setIsEditing(true);
-  };
-
-  const name = profile?.full_name || "ZipRide Rider";
-  const initial = name ? name[0] : "U";
-  const memberSince = profile?.created_at
-    ? new Date(profile.created_at).toLocaleDateString([], { month: "long", year: "numeric" })
-    : "June 2026";
-
   const handleSave = async () => {
     if (!editName.trim()) {
-      alert("Name is mandatory.");
+      alert("Name is required.");
       return;
     }
     setSaving(true);
     try {
       await updateProfile({
-        full_name: editName,
-        email: editEmail,
+        full_name: editName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
         date_of_birth: editDob,
         gender: editGender,
-        address: editAddress,
+        address: editAddress.trim(),
       });
-      alert("Profile updated successfully!");
+
+      // Also update directly in Supabase profiles table for immediate consistency
+      if (profile?.id) {
+        await supabase
+          .from("profiles")
+          .update({
+            full_name: editName.trim(),
+            phone: editPhone.trim(),
+            email: editEmail.trim(),
+            date_of_birth: editDob || null,
+            gender: editGender || null,
+            address: editAddress.trim() || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", profile.id);
+      }
+
+      alert("Profile details updated successfully!");
       setIsEditing(false);
       await refreshProfile();
     } catch (err: any) {
@@ -134,6 +139,12 @@ export function Profile() {
     }
   };
 
+  const name = profile?.full_name || "ZipRide User";
+  const initial = name ? name[0] : "U";
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString([], { month: "long", year: "numeric" })
+    : "June 2026";
+
   const rawDob = profile?.date_of_birth || (profile as any)?.dob;
   const userRole = profile?.role ? (profile.role.charAt(0).toUpperCase() + profile.role.slice(1)) : "Rider";
   const hasPhone = Boolean(profile?.phone && profile.phone.trim() !== "");
@@ -141,7 +152,27 @@ export function Profile() {
 
   return (
     <AccountShell active="Profile">
-      <h1 className="mb-4 text-2xl font-extrabold">Profile Details</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-extrabold">{isEditing ? "Edit Profile Details" : "Account Details"}</h1>
+        <button
+          onClick={() => {
+            if (!isEditing) {
+              setEditName(profile?.full_name || "");
+              setEditPhone(profile?.phone || "");
+              setEditEmail(profile?.email || "");
+              setEditDob(toInputDate(profile?.date_of_birth || (profile as any)?.dob || ""));
+              setEditGender(normalizeGender(profile?.gender));
+              setEditAddress(profile?.address || "");
+            }
+            setIsEditing(!isEditing);
+          }}
+          className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-xs font-extrabold text-foreground hover:bg-secondary transition-colors cursor-pointer shadow-soft"
+        >
+          {isEditing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+          {isEditing ? "Cancel Editing" : "Edit Profile"}
+        </button>
+      </div>
+
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
         <StatCard value={stats.totalRides.toString()} label="Total Rides" />
         <StatCard value={balance} label="Wallet Balance" />
@@ -176,75 +207,190 @@ export function Profile() {
                 <p className="text-xs sm:text-sm text-muted-foreground">Member since {memberSince}</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
-              Account Type: {userRole}
-            </span>
-          </div>
-
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Full Name
-              </p>
-              <p className="mt-1 text-sm font-extrabold text-foreground">
-                {name}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                {isPhoneVerified ? "Phone Number (Verified)" : "Phone Number"}
-              </p>
-              <p className="mt-1 text-sm font-extrabold text-foreground">
-                {hasPhone ? profile?.phone : "Not specified"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Email
-              </p>
-              <p className="mt-1 text-sm font-extrabold text-foreground">
-                {profile?.email || "Not specified"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Date of Birth
-              </p>
-              <p className="mt-1 text-sm font-extrabold text-foreground">
-                {rawDob || "Not specified"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Gender
-              </p>
-              <p className="mt-1 text-sm font-extrabold text-foreground">
-                {normalizeGender(profile?.gender) || "Not specified"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Address
-              </p>
-              <p className="mt-1 text-sm font-extrabold text-foreground">
-                {profile?.address || "Not specified"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Referral Code
-              </p>
-              <p className="mt-1 text-sm font-extrabold text-primary">
-                {profile?.referral_code || "ZRGRA08151"}
-              </p>
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+                Account Type: {userRole}
+              </span>
+              {isEditing && (
+                <button
+                  disabled={saving}
+                  onClick={handleSave}
+                  className="flex items-center gap-2 rounded-xl gradient-brand px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.02] disabled:opacity-50 cursor-pointer"
+                >
+                  <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Details"}
+                </button>
+              )}
             </div>
           </div>
+
+          {isEditing ? (
+            /* Editable Form View */
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Full Name <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="+919876543210"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  placeholder="name@example.com"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Date of Birth
+                </label>
+                <input
+                  type="date"
+                  value={editDob}
+                  onChange={(e) => setEditDob(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Gender
+                </label>
+                <select
+                  value={editGender}
+                  onChange={(e) => setEditGender(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none text-sm"
+                >
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="123 Main Street, City"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Referral Code
+                </label>
+                <div className="mt-1 block w-full rounded-xl border border-border bg-secondary/30 px-4 py-2.5 font-extrabold text-primary text-sm">
+                  {profile?.referral_code || "ZRGRA08151"}
+                </div>
+              </div>
+
+              <div className="sm:col-span-2 pt-2 flex justify-end">
+                <button
+                  disabled={saving}
+                  onClick={handleSave}
+                  className="flex items-center gap-2 rounded-xl gradient-brand px-6 py-3 font-extrabold text-primary-foreground shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-50 cursor-pointer text-sm"
+                >
+                  <Save className="h-4 w-4" /> {saving ? "Saving Changes..." : "Save Profile Details"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Read-Only Details View */
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Full Name
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-foreground">
+                  {name}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  {isPhoneVerified ? "Phone Number (Verified)" : "Phone Number"}
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-foreground">
+                  {hasPhone ? profile?.phone : "Not specified"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Email
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-foreground">
+                  {profile?.email || "Not specified"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Date of Birth
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-foreground">
+                  {rawDob || "Not specified"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Gender
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-foreground">
+                  {normalizeGender(profile?.gender) || "Not specified"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Address
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-foreground">
+                  {profile?.address || "Not specified"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Referral Code
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-primary">
+                  {profile?.referral_code || "ZRGRA08151"}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </Reveal>
 
