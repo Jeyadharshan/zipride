@@ -273,6 +273,11 @@
   }
 }
 
+/* Hide floating language switcher on profile page */
+body:has(#profile-page-container) .language-switcher-wrapper {
+  display: none !important;
+}
+
 @utility glass {
   background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(160%);

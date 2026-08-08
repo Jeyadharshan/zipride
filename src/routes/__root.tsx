@@ -145,18 +145,14 @@ import { LanguageSwitcher } from "@/shared/components/LanguageSwitcher";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isProfilePage = pathname === "/profile" || pathname.startsWith("/profile");
 
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <AuthProvider>
-          {!isProfilePage && (
-            <div className="fixed top-4 right-4 z-50 pointer-events-auto">
-              <LanguageSwitcher />
-            </div>
-          )}
+          <div className="language-switcher-wrapper fixed top-4 right-4 z-50 pointer-events-auto">
+            <LanguageSwitcher />
+          </div>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
         </AuthProvider>
