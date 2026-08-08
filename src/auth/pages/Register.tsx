@@ -341,436 +341,545 @@ export function Register() {
     }
   };
 
+  // ─── inline validation helpers ───────────────────────────────────────────
+  const phoneDigits = rawPhone.replace(/\D/g, "");
+  const phoneValid  = phoneDigits.length === 10;
+  const emailValid  = email.includes("@") && email.includes(".");
+  const nameValid   = fullName.trim().length >= 2;
+  const usernameValid = username.trim().length >= 3;
+  const passwordValid = password.length >= 6 &&
+    /[a-zA-Z]/.test(password) && /[0-9]/.test(password) && /[^a-zA-Z0-9]/.test(password);
+  const passwordMatch = password === confirmPassword && confirmPassword.length > 0;
+
+  const driverReady = role === "driver"
+    ? licenseNumber.trim().length > 0 && !!profilePhotoFile && !!licenseFile
+    : true;
+
+  const formReady = nameValid && emailValid && usernameValid &&
+    passwordValid && passwordMatch && driverReady;
+
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Left panel - Gradients & Info */}
-      <div className="relative hidden flex-col justify-between overflow-hidden gradient-hero p-12 text-white lg:flex">
-        <div className="pointer-events-none absolute -right-20 top-10 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-        <Logo to="/" invert />
-        <div className="relative z-10 max-w-md">
-          <h1 className="text-5xl font-extrabold leading-tight">
-            Join the
-            <br />
-            <span className="text-white/70">ZipRide Network.</span>
-            <br />
-            Earn or Ride.
-          </h1>
-          <p className="mt-5 text-white/80">
-            Sign up now. Experience top-tier urban mobility. Make wallets payments, track status, or drive to generate income.
+    <div className="min-h-screen bg-background">
+      {/* ── Page header ── */}
+      <div className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur-md px-4 py-3 flex items-center gap-3">
+        <LogoMark className="h-8 w-8 shrink-0" />
+        <div>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">ZipRide</p>
+          <h1 className="text-base font-extrabold text-foreground leading-none">Create Account</h1>
+        </div>
+        <div className="ml-auto">
+          <Link to="/login" className="text-xs font-semibold text-primary hover:underline">
+            Sign in instead →
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Scrollable body ── */}
+      <div className="mx-auto max-w-lg px-4 py-6 space-y-6 pb-32">
+
+        {/* ── STEP 1 · Google quick-start ── */}
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Quick Start
           </p>
-        </div>
-        <div className="relative z-10 flex gap-4 text-xs font-semibold text-white/60">
-          <span>© 2026 ZipRide Technologies Inc.</span>
-        </div>
-      </div>
-
-      {/* Right panel - Dynamic Form */}
-      <div className="flex items-center justify-center bg-background p-6 sm:p-12">
-        <div id="recaptcha-container" className="hidden" />
-        <Reveal className="w-full max-w-lg">
-          <div className="rounded-3xl border border-border bg-card p-8 shadow-elevated">
-            <div className="mb-6 flex items-center gap-3 lg:hidden">
-              <LogoMark className="h-10 w-10" />
+          <button
+            type="button"
+            id="google-register-btn"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background py-3.5 px-4 font-bold text-foreground shadow-soft transition-all hover:bg-secondary/60 hover:border-primary/40 cursor-pointer disabled:opacity-50"
+          >
+            <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>{loading ? "Connecting…" : "Continue with Google"}</span>
+          </button>
+          {fullName && email && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-green-500/10 border border-green-500/20 px-3 py-2">
+              <span className="text-green-500 text-base">✓</span>
+              <p className="text-xs font-semibold text-green-600">Google account linked — name & email pre-filled below.</p>
             </div>
+          )}
+        </section>
 
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              <ShieldCheck className="h-3.5 w-3.5" /> Fast Setup
-            </span>
-            {/* Google Sign-In Button */}
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-card py-3.5 px-4 font-bold text-foreground shadow-soft transition-all hover:bg-secondary/60 hover:border-primary/40 cursor-pointer disabled:opacity-50"
-            >
-              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              <span>Continue with Google</span>
-            </button>
+        <div className="relative flex items-center">
+          <div className="flex-1 border-t border-border" />
+          <span className="mx-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground bg-background px-1">
+            or fill in manually
+          </span>
+          <div className="flex-1 border-t border-border" />
+        </div>
 
-            <div className="relative my-5 flex items-center justify-center">
-              <div className="w-full border-t border-border" />
-              <span className="absolute bg-card px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                or register manually
-              </span>
-            </div>
+        <form onSubmit={handleRegisterSubmit} className="space-y-6" noValidate>
 
-            <form className="mt-4 space-y-4" onSubmit={handleRegisterSubmit}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Username */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="username">
-                    Username <span className="text-destructive">*</span>
-                  </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <AtSign className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      id="username"
-                      type="text"
-                      placeholder="rahul_kumar"
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
-                    />
-                  </div>
-                </div>
-
-                {/* Email Address */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="email">
-                    Email Address <span className="text-destructive">*</span>
-                  </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      id="email"
-                      type="email"
-                      placeholder="name@example.com"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Password */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="password">
-                    Password <span className="text-destructive">*</span>
-                  </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      id="password"
-                      type="password"
-                      placeholder="Min 6 characters"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="confirmPassword">
-                    Confirm Password <span className="text-destructive">*</span>
-                  </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Repeat password"
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Gender */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="gender">
-                    Gender <span className="text-destructive">*</span>
-                  </label>
-                  <select
-                    id="gender"
-                    required
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
-                    className="w-full rounded-2xl border border-input bg-background px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                {/* Role Selection Dropdown */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="role">
-                    Register as <span className="text-destructive">*</span>
-                  </label>
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as "rider" | "driver")}
-                    className="w-full rounded-2xl border border-input bg-background px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
-                  >
-                    <option value="rider">Rider (Passenger)</option>
-                    <option value="driver">Driver (verification required)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Conditional rendering for Rider field inputs */}
-              {role === "rider" && (
-                <div className="space-y-4 rounded-2xl bg-muted/20 p-4 border border-border">
-                  <p className="text-xs font-bold text-muted-foreground">Rider Account Details (Optional)</p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {/* DOB */}
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="dob">
-                        Date of Birth
-                      </label>
-                      <div className="flex items-center gap-2 rounded-xl border border-input bg-background px-3 outline-none">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                        <input
-                          id="dob"
-                          type="date"
-                          value={dob}
-                          onChange={(e) => setDob(e.target.value)}
-                          className="w-full bg-transparent py-2.5 text-xs outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Gender */}
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="gender">
-                        Gender
-                      </label>
-                      <select
-                        id="gender"
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value)}
-                        className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-xs outline-none"
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Referral Code */}
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="referralCode">
-                      Referral Code
-                    </label>
-                    <div className="flex items-center gap-2 rounded-xl border border-input bg-background px-3 outline-none">
-                      <User className="h-3.5 w-3.5 text-muted-foreground" />
-                      <input
-                        id="referralCode"
-                        type="text"
-                        placeholder="Enter referrer username"
-                        value={referralCode}
-                        onChange={(e) => setReferralCode(e.target.value)}
-                        className="w-full bg-transparent py-2.5 text-xs outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Conditional rendering for Driver documents uploads */}
-              {role === "driver" && (
-                <div className="space-y-4 rounded-2xl bg-muted/20 p-4 border border-border">
-                  <p className="text-xs font-bold text-muted-foreground">Driver Information & Verification Documents (Required)</p>
-                  
-                  {/* Driving License Number */}
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="licenseNumber">
-                      Driving License Number
-                    </label>
-                    <div className="flex items-center gap-2 rounded-xl border border-input bg-background px-3 outline-none">
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      <input
-                        id="licenseNumber"
-                        type="text"
-                        placeholder="TN7220200012345"
-                        required={role === "driver"}
-                        value={licenseNumber}
-                        onChange={(e) => setLicenseNumber(e.target.value)}
-                        className="w-full bg-transparent py-2.5 text-xs outline-none font-medium"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Profile Photo File Upload */}
-                  <div>
-                    <div className="mb-1 flex items-center justify-between">
-                      <label className="block text-xs font-semibold text-muted-foreground">
-                        Profile Photo (Required: 1 MB – 2 MB, JPG/PNG/WEBP)
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-primary/10 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors">
-                        <Upload className="h-4 w-4" /> Upload Photo
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/jpg,image/png,image/webp"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0] || null;
-                            if (f) {
-                              const minB = 10 * 1024; // 10 KB
-                              const maxB = 2 * 1024 * 1024; // 2 MB
-                              if (f.size < minB || f.size > maxB) {
-                                alert(`Profile Photo must be up to 2 MB. Uploaded file size: ${(f.size / (1024 * 1024)).toFixed(2)} MB`);
-                                e.target.value = "";
-                                setProfilePhotoFile(null);
-                                return;
-                              }
-                            }
-                            setProfilePhotoFile(f);
-                          }}
-                        />
-                      </label>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {profilePhotoFile ? `${profilePhotoFile.name} (${(profilePhotoFile.size / (1024 * 1024)).toFixed(2)}MB)` : "No file selected"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Driving License File Upload */}
-                  <div>
-                    <div className="mb-1 flex items-center justify-between">
-                      <label className="block text-xs font-semibold text-muted-foreground">
-                        Driving License Document (JPG, PNG, WEBP, PDF)
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-primary/10 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors">
-                        <FileText className="h-4 w-4" /> Upload License
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0] || null;
-                            if (f) {
-                              const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
-                              if (!allowed.includes(f.type)) {
-                                alert("Invalid licence document format. Accepted formats: JPG, PNG, WEBP, PDF.");
-                                e.target.value = "";
-                                setLicenseFile(null);
-                                return;
-                              }
-                            }
-                            setLicenseFile(f);
-                          }}
-                        />
-                      </label>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {licenseFile ? licenseFile.name : "No file selected"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Vehicle Details */}
-                  <div className="space-y-3 rounded-xl bg-background/50 p-3 border border-border/60">
-                    <p className="text-xs font-bold text-muted-foreground">Vehicle Details (Optional)</p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleMake">
-                          Car Make <span className="text-muted-foreground/60">(e.g. Honda)</span>
-                        </label>
-                        <input
-                          id="vehicleMake"
-                          type="text"
-                          placeholder="Toyota"
-                          value={vehicleMake}
-                          onChange={(e) => setVehicleMake(e.target.value)}
-                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleModel">
-                          Car Model <span className="text-muted-foreground/60">(e.g. City)</span>
-                        </label>
-                        <input
-                          id="vehicleModel"
-                          type="text"
-                          placeholder="Corolla"
-                          value={vehicleModel}
-                          onChange={(e) => setVehicleModel(e.target.value)}
-                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleYear">
-                          Year of Manufacture
-                        </label>
-                        <input
-                          id="vehicleYear"
-                          type="number"
-                          min={1990}
-                          max={new Date().getFullYear() + 1}
-                          placeholder="2022"
-                          value={vehicleYear}
-                          onChange={(e) => setVehicleYear(e.target.value)}
-                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehicleColor">
-                          Vehicle Color
-                        </label>
-                        <input
-                          id="vehicleColor"
-                          type="text"
-                          placeholder="White"
-                          value={vehicleColor}
-                          onChange={(e) => setVehicleColor(e.target.value)}
-                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="vehiclePlate">
-                        License Plate Number
-                      </label>
-                      <input
-                        id="vehiclePlate"
-                        type="text"
-                        placeholder="TN 01 AB 1234"
-                        value={vehiclePlate}
-                        onChange={(e) => setVehiclePlate(e.target.value)}
-                        className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none font-medium"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                id="register-submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-50"
-              >
-                {loading ? "Registering & Sending OTP..." : "Register & Get OTP"}
-                <ArrowRight className="h-5 w-5" />
-              </button>
-            </form>
-
-            <p className="mt-5 text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link to="/login" className="font-semibold text-primary hover:underline">
-                Sign in
-              </Link>
+          {/* ── STEP 2 · Account Type ── */}
+          <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Account Type <span className="text-destructive">*</span>
             </p>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Rider card */}
+              <button
+                type="button"
+                id="role-rider-btn"
+                onClick={() => setRole("rider")}
+                className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition-all cursor-pointer ${
+                  role === "rider"
+                    ? "border-primary bg-primary/8 shadow-md"
+                    : "border-border bg-background hover:border-primary/40"
+                }`}
+              >
+                <span className="text-3xl">🚗</span>
+                <span className={`text-sm font-extrabold ${role === "rider" ? "text-primary" : "text-foreground"}`}>
+                  Rider
+                </span>
+                <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                  Book rides & travel
+                </span>
+                {role === "rider" && (
+                  <span className="mt-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                    Selected ✓
+                  </span>
+                )}
+              </button>
+
+              {/* Driver card */}
+              <button
+                type="button"
+                id="role-driver-btn"
+                onClick={() => setRole("driver")}
+                className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition-all cursor-pointer ${
+                  role === "driver"
+                    ? "border-primary bg-primary/8 shadow-md"
+                    : "border-border bg-background hover:border-primary/40"
+                }`}
+              >
+                <span className="text-3xl">🚖</span>
+                <span className={`text-sm font-extrabold ${role === "driver" ? "text-primary" : "text-foreground"}`}>
+                  Driver
+                </span>
+                <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                  Earn by driving
+                </span>
+                {role === "driver" && (
+                  <span className="mt-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                    Selected ✓
+                  </span>
+                )}
+              </button>
+            </div>
+          </section>
+
+          {/* ── STEP 3 · Common Fields ── */}
+          <section className="rounded-2xl border border-border bg-card p-5 shadow-soft space-y-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Personal Details</p>
+
+            {/* Full Name */}
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold" htmlFor="fullName">
+                Full Name <span className="text-destructive">*</span>
+              </label>
+              <div className={`flex items-center gap-2 rounded-2xl border px-4 focus-within:ring-2 focus-within:ring-ring transition-colors ${
+                fullName && !nameValid ? "border-destructive bg-destructive/5" : "border-input bg-background"
+              }`}>
+                <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  id="fullName"
+                  type="text"
+                  placeholder="Rahul Kumar"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
+                />
+                {fullName && nameValid && <span className="text-green-500 text-sm shrink-0">✓</span>}
+              </div>
+              {fullName && !nameValid && (
+                <p className="mt-1 text-[11px] text-destructive font-medium">Minimum 2 characters required.</p>
+              )}
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold" htmlFor="reg-email">
+                Email Address <span className="text-destructive">*</span>
+              </label>
+              <div className={`flex items-center gap-2 rounded-2xl border px-4 focus-within:ring-2 focus-within:ring-ring transition-colors ${
+                email && !emailValid ? "border-destructive bg-destructive/5" : "border-input bg-background"
+              }`}>
+                <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  id="reg-email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
+                />
+                {email && emailValid && <span className="text-green-500 text-sm shrink-0">✓</span>}
+              </div>
+              {email && !emailValid && (
+                <p className="mt-1 text-[11px] text-destructive font-medium">Enter a valid email address.</p>
+              )}
+            </div>
+
+            {/* Mobile Number — fixed +91 prefix, 10-digit numeric */}
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold" htmlFor="phone">
+                Mobile Number
+              </label>
+              <div className={`flex items-center rounded-2xl border focus-within:ring-2 focus-within:ring-ring transition-colors overflow-hidden ${
+                rawPhone && !phoneValid ? "border-destructive bg-destructive/5" : "border-input bg-background"
+              }`}>
+                <div className="flex items-center gap-1.5 bg-muted/40 border-r border-border px-3 py-3.5 shrink-0">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-bold text-foreground">+91</span>
+                </div>
+                <input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={rawPhone}
+                  onChange={(e) => setRawPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  className="w-full bg-transparent py-3.5 px-3 outline-none text-sm font-medium tracking-wider"
+                />
+                {rawPhone && phoneValid && <span className="text-green-500 text-sm shrink-0 pr-3">✓</span>}
+              </div>
+              {rawPhone && !phoneValid && (
+                <p className="mt-1 text-[11px] text-destructive font-medium">
+                  Enter exactly 10 digits (e.g. 9876543210).
+                </p>
+              )}
+              {rawPhone && phoneValid && (
+                <p className="mt-1 text-[11px] text-muted-foreground font-medium">
+                  Will be saved as: +91{rawPhone}
+                </p>
+              )}
+            </div>
+
+            {/* Username */}
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold" htmlFor="username">
+                Username <span className="text-destructive">*</span>
+              </label>
+              <div className={`flex items-center gap-2 rounded-2xl border px-4 focus-within:ring-2 focus-within:ring-ring transition-colors ${
+                username && !usernameValid ? "border-destructive bg-destructive/5" : "border-input bg-background"
+              }`}>
+                <AtSign className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  id="username"
+                  type="text"
+                  placeholder="rahul_kumar"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
+                />
+                {username && usernameValid && <span className="text-green-500 text-sm shrink-0">✓</span>}
+              </div>
+              {username && !usernameValid && (
+                <p className="mt-1 text-[11px] text-destructive font-medium">Minimum 3 characters required.</p>
+              )}
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold" htmlFor="gender">
+                Gender <span className="text-destructive">*</span>
+              </label>
+              <select
+                id="gender"
+                required
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="w-full rounded-2xl border border-input bg-background px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
+              >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold" htmlFor="password">
+                Password <span className="text-destructive">*</span>
+              </label>
+              <div className={`flex items-center gap-2 rounded-2xl border px-4 focus-within:ring-2 focus-within:ring-ring transition-colors ${
+                password && !passwordValid ? "border-destructive bg-destructive/5" : "border-input bg-background"
+              }`}>
+                <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="Min 6 chars · letter + number + symbol"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-transparent py-3.5 outline-none text-sm"
+                />
+                {password && passwordValid && <span className="text-green-500 text-sm shrink-0">✓</span>}
+              </div>
+              {password && !passwordValid && (
+                <p className="mt-1 text-[11px] text-destructive font-medium">
+                  Min 6 chars with at least one letter, number & special character.
+                </p>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold" htmlFor="confirmPassword">
+                Confirm Password <span className="text-destructive">*</span>
+              </label>
+              <div className={`flex items-center gap-2 rounded-2xl border px-4 focus-within:ring-2 focus-within:ring-ring transition-colors ${
+                confirmPassword && !passwordMatch ? "border-destructive bg-destructive/5" : "border-input bg-background"
+              }`}>
+                <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Repeat password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-transparent py-3.5 outline-none text-sm"
+                />
+                {confirmPassword && passwordMatch && <span className="text-green-500 text-sm shrink-0">✓</span>}
+              </div>
+              {confirmPassword && !passwordMatch && (
+                <p className="mt-1 text-[11px] text-destructive font-medium">Passwords do not match.</p>
+              )}
+            </div>
+          </section>
+
+          {/* ── STEP 4 · Rider-specific fields ── */}
+          {role === "rider" && (
+            <section className="rounded-2xl border border-primary/20 bg-card p-5 shadow-soft space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🚗</span>
+                <p className="text-xs font-bold uppercase tracking-wider text-primary">Rider Details (Optional)</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* DOB */}
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="dob">
+                    Date of Birth
+                  </label>
+                  <div className="flex items-center gap-2 rounded-xl border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
+                    <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <input
+                      id="dob"
+                      type="date"
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                      className="w-full bg-transparent py-2.5 text-xs outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Emergency Contact */}
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="referralCode">
+                    Referral / Emergency Code
+                  </label>
+                  <div className="flex items-center gap-2 rounded-xl border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
+                    <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <input
+                      id="referralCode"
+                      type="text"
+                      placeholder="Referral code or contact"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value)}
+                      className="w-full bg-transparent py-2.5 text-xs outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ── STEP 4 · Driver-specific fields ── */}
+          {role === "driver" && (
+            <section className="rounded-2xl border border-primary/20 bg-card p-5 shadow-soft space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🚖</span>
+                <p className="text-xs font-bold uppercase tracking-wider text-primary">Driver Verification (Required)</p>
+              </div>
+
+              {/* License Number */}
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="licenseNumber">
+                  Driving License Number <span className="text-destructive">*</span>
+                </label>
+                <div className={`flex items-center gap-2 rounded-xl border px-3 focus-within:ring-2 focus-within:ring-ring ${
+                  licenseNumber && licenseNumber.trim().length < 5 ? "border-destructive bg-destructive/5" : "border-input bg-background"
+                }`}>
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <input
+                    id="licenseNumber"
+                    type="text"
+                    placeholder="TN7220200012345"
+                    required={role === "driver"}
+                    value={licenseNumber}
+                    onChange={(e) => setLicenseNumber(e.target.value)}
+                    className="w-full bg-transparent py-2.5 text-xs outline-none font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Profile Photo */}
+              <div>
+                <p className="mb-1.5 text-xs font-semibold text-muted-foreground">
+                  Profile Photo <span className="text-destructive">*</span>{" "}
+                  <span className="font-normal text-muted-foreground/70">(JPG/PNG/WEBP, max 2 MB)</span>
+                </p>
+                <label className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3 transition-colors hover:border-primary/50 hover:bg-primary/5 ${
+                  profilePhotoFile ? "border-green-500 bg-green-500/5" : "border-border"
+                }`}>
+                  <Upload className="h-4 w-4 shrink-0 text-primary" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-foreground">
+                      {profilePhotoFile ? profilePhotoFile.name : "Tap to upload profile photo"}
+                    </p>
+                    {profilePhotoFile && (
+                      <p className="text-[11px] text-muted-foreground">{(profilePhotoFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                    )}
+                  </div>
+                  {profilePhotoFile && <span className="text-green-500 text-sm shrink-0">✓</span>}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      if (f) {
+                        if (f.size < 10 * 1024 || f.size > 2 * 1024 * 1024) {
+                          alert(`Profile Photo must be up to 2 MB. File size: ${(f.size / (1024 * 1024)).toFixed(2)} MB`);
+                          e.target.value = "";
+                          setProfilePhotoFile(null);
+                          return;
+                        }
+                      }
+                      setProfilePhotoFile(f);
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* License Document */}
+              <div>
+                <p className="mb-1.5 text-xs font-semibold text-muted-foreground">
+                  Driving License Document <span className="text-destructive">*</span>{" "}
+                  <span className="font-normal text-muted-foreground/70">(JPG, PNG, PDF)</span>
+                </p>
+                <label className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3 transition-colors hover:border-primary/50 hover:bg-primary/5 ${
+                  licenseFile ? "border-green-500 bg-green-500/5" : "border-border"
+                }`}>
+                  <FileText className="h-4 w-4 shrink-0 text-primary" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-foreground">
+                      {licenseFile ? licenseFile.name : "Tap to upload license document"}
+                    </p>
+                  </div>
+                  {licenseFile && <span className="text-green-500 text-sm shrink-0">✓</span>}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      if (f) {
+                        const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
+                        if (!allowed.includes(f.type)) {
+                          alert("Invalid format. Accepted: JPG, PNG, WEBP, PDF.");
+                          e.target.value = "";
+                          setLicenseFile(null);
+                          return;
+                        }
+                      }
+                      setLicenseFile(f);
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Vehicle Details */}
+              <div className="space-y-3 rounded-xl bg-muted/20 p-3 border border-border/60">
+                <p className="text-xs font-bold text-muted-foreground">Vehicle Details (Optional)</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-muted-foreground" htmlFor="vehicleMake">Make</label>
+                    <input id="vehicleMake" type="text" placeholder="Toyota" value={vehicleMake}
+                      onChange={(e) => setVehicleMake(e.target.value)}
+                      className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-muted-foreground" htmlFor="vehicleModel">Model</label>
+                    <input id="vehicleModel" type="text" placeholder="Corolla" value={vehicleModel}
+                      onChange={(e) => setVehicleModel(e.target.value)}
+                      className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-muted-foreground" htmlFor="vehicleYear">Year</label>
+                    <input id="vehicleYear" type="number" min={1990} max={new Date().getFullYear() + 1} placeholder="2022" value={vehicleYear}
+                      onChange={(e) => setVehicleYear(e.target.value)}
+                      className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-muted-foreground" htmlFor="vehicleColor">Color</label>
+                    <input id="vehicleColor" type="text" placeholder="White" value={vehicleColor}
+                      onChange={(e) => setVehicleColor(e.target.value)}
+                      className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold text-muted-foreground" htmlFor="vehiclePlate">
+                    Registration / Plate Number
+                  </label>
+                  <input id="vehiclePlate" type="text" placeholder="TN 01 AB 1234" value={vehiclePlate}
+                    onChange={(e) => setVehiclePlate(e.target.value)}
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-ring font-medium" />
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ── Save Button (sticky bottom) ── */}
+          <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-card/90 backdrop-blur-md px-4 py-3 flex flex-col gap-2">
+            {!formReady && (
+              <p className="text-center text-[11px] text-muted-foreground font-medium">
+                Fill all required fields to enable Save.
+              </p>
+            )}
+            <button
+              type="submit"
+              id="register-submit"
+              disabled={loading || !formReady}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {loading ? "Creating Account & Sending OTP…" : "Save Account & Continue"}
+              <ArrowRight className="h-5 w-5" />
+            </button>
           </div>
-        </Reveal>
+
+          {/* spacer so content is not hidden behind sticky button */}
+          <div className="h-24" />
+        </form>
+
+        <p className="text-center text-sm text-muted-foreground pb-6">
+          Already have an account?{" "}
+          <Link to="/login" className="font-semibold text-primary hover:underline">Sign in</Link>
+        </p>
       </div>
 
-      {/* Role Selection Modal for Google Sign-In */}
+      {/* ── Google Sign-In · Rider/Driver Role Modal ── */}
       {showRoleSelectorModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl text-card-foreground">
@@ -792,13 +901,10 @@ export function Register() {
                 ✕
               </button>
             </div>
-
             <p className="text-xs font-medium text-muted-foreground mb-5">
               Select your account type to complete registration with Google:
             </p>
-
             <div className="space-y-3">
-              {/* Rider Option */}
               <button
                 type="button"
                 onClick={() => selectRoleAndComplete("rider")}
@@ -816,8 +922,6 @@ export function Register() {
                   </div>
                 </div>
               </button>
-
-              {/* Driver Option */}
               <button
                 type="button"
                 onClick={() => selectRoleAndComplete("driver")}
