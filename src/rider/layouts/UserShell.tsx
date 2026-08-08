@@ -114,7 +114,7 @@ export function UserTopNav() {
                 <Avatar label={initial} className="h-12 w-12 text-base" />
                 <div>
                   <p className="font-extrabold text-foreground">{name}</p>
-                  <p className="text-xs text-primary font-semibold">View Profile & Edit</p>
+                  <p className="text-xs text-primary font-semibold">Edit Details</p>
                 </div>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />

@@ -147,7 +147,7 @@ export function Profile() {
 
   return (
     <AccountShell active="Profile">
-      <h1 className="mb-4 text-2xl font-extrabold">Profile Information</h1>
+      <h1 className="mb-4 text-2xl font-extrabold">Edit Profile Details</h1>
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
         <StatCard value={stats.totalRides.toString()} label="Total Rides" />
         <StatCard value={balance} label="Wallet Balance" />
