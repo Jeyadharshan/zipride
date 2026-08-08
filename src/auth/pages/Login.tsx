@@ -100,6 +100,7 @@ export function Login() {
       if (firebaseAuth) {
         try {
           const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: "select_account" });
           const result = await signInWithPopup(firebaseAuth, provider);
           if (result?.user?.email) {
             const res = await apiFetch("/api/auth/google-login", {
@@ -108,7 +109,8 @@ export function Login() {
               body: JSON.stringify({
                 email: result.user.email,
                 fullName: result.user.displayName || result.user.email.split("@")[0],
-                photoUrl: result.user.photoURL || ""
+                photoUrl: result.user.photoURL || "",
+                firebaseUid: result.user.uid || ""
               })
             });
             const data = await res.json();
@@ -118,14 +120,28 @@ export function Login() {
             }
           }
         } catch (fbErr: any) {
-          console.warn("Firebase Google Sign-In popup notice:", fbErr.message);
+          if (fbErr.code === "auth/popup-closed-by-user") {
+            setLoading(false);
+            return;
+          }
+          if (fbErr.code === "auth/popup-blocked") {
+            alert("Sign-in popup was blocked by your browser. Please allow popups for this site and try again.");
+            setLoading(false);
+            return;
+          }
+          if (fbErr.code === "auth/network-request-failed") {
+            alert("Network connection error. Please check your internet connection and try again.");
+            setLoading(false);
+            return;
+          }
+          console.warn("Firebase Google Sign-In notice:", fbErr.code || fbErr.message);
         }
       }
 
-      // If Firebase popup is disabled or unauthorized domain, show Google Sign-In Modal
+      // If Firebase popup is disabled or domain unauthorized, open clean inline Google Sign-In Modal
       setShowGoogleModal(true);
     } catch (err: any) {
-      alert("Google Sign-In error: " + err.message);
+      alert("Unable to sign in with Google. Please try again.");
     } finally {
       setLoading(false);
     }
