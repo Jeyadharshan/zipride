@@ -457,48 +457,6 @@ export function Login() {
               </Link>
             </p>
 
-            {/* Quick Demo Accounts */}
-            <div className="mt-5 border-t border-border pt-4 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">
-                Quick Demo Accounts
-              </p>
-              <div className="grid grid-cols-3 gap-2 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMode("password");
-                    setUsername("rider@zipride.com");
-                    setPassword("rider123");
-                  }}
-                  className="rounded-xl border border-border bg-secondary/50 py-2.5 hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  👤 Rider
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMode("password");
-                    setUsername("driver@zipride.com");
-                    setPassword("driver123");
-                  }}
-                  className="rounded-xl border border-border bg-secondary/50 py-2.5 hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  🚗 Driver
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMode("password");
-                    setUsername("admin@zipride.com");
-                    setPassword("admin123");
-                  }}
-                  className="rounded-xl border border-border bg-secondary/50 py-2.5 hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  ⚡ Admin
-                </button>
-              </div>
-            </div>
-
             <div className="mt-6 flex items-center justify-center gap-4 border-t border-border pt-5 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Lock className="h-3.5 w-3.5" /> SSL Secured
