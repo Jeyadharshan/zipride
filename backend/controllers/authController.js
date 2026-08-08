@@ -599,7 +599,13 @@ export const AuthController = {
       }
 
       const targetRole = (role === 'driver') ? 'driver' : 'rider';
+      const firebaseUid = uid || req.body.firebaseUid || '';
       let user = await AuthRepository.findByEmail(email);
+      if (!user && firebaseUid) {
+        const [uRows] = await dbQuery(`SELECT * FROM profiles WHERE firebase_uid = ? LIMIT 1`, [firebaseUid]).catch(() => [[]]);
+        user = uRows?.[0] || null;
+      }
+
       const googleFullName = (fullName && fullName.trim()) ? fullName.trim() : email.split('@')[0];
       const baseSlug = googleFullName.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
       const derivedUsername = (baseSlug.length >= 3 ? baseSlug : email.split('@')[0]);
@@ -646,10 +652,16 @@ export const AuthController = {
         const referralCode = `ZR${cleanSeed}${Math.floor(1000 + Math.random() * 9000)}`;
 
         await dbQuery(
-          `INSERT INTO profiles (id, username, password_hash, full_name, phone, email, role, referral_code, account_status, phone_verified, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())`,
-          [userId, targetUsername, dummyHash, googleFullName, phone, email, targetRole, referralCode]
-        ).catch(() => {});
+          `INSERT INTO profiles (id, username, password_hash, full_name, phone, email, role, referral_code, account_status, phone_verified, firebase_uid, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, ?, NOW(), NOW())`,
+          [userId, targetUsername, dummyHash, googleFullName, phone, email, targetRole, referralCode, firebaseUid]
+        ).catch(async () => {
+          await dbQuery(
+            `INSERT INTO profiles (id, username, password_hash, full_name, phone, email, role, referral_code, account_status, phone_verified, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())`,
+            [userId, targetUsername, dummyHash, googleFullName, phone, email, targetRole, referralCode]
+          ).catch(() => {});
+        });
 
         if (photoUrl) {
           await dbQuery('UPDATE profiles SET profile_image = ? WHERE id = ?', [photoUrl, userId]).catch(() => {});

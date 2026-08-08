@@ -126,11 +126,11 @@ export function Register() {
         };
       }
 
-      // Check backend for existing account
+      // Check backend for existing account on Register page
       const res = await apiFetch("/api/auth/google-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(googleUser)
+        body: JSON.stringify({ ...googleUser, mode: "register" })
       });
       const data = await res.json();
 
@@ -165,7 +165,8 @@ export function Register() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...pendingGoogleUser,
-          role: targetRole
+          role: targetRole,
+          mode: "register"
         })
       });
       const data = await res.json();

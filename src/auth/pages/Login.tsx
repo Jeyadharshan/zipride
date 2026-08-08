@@ -213,12 +213,18 @@ export function Login() {
         body: JSON.stringify({
           email,
           fullName: name,
-          photoUrl: ""
+          photoUrl: "",
+          mode: "login"
         })
       });
       const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || "Google Sign-In failed.");
+      if (!res.ok || data.notFound || data.isNewUser || !data?.data?.user) {
+        setShowGoogleModal(false);
+        sessionStorage.clear();
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("user_role");
+        localStorage.removeItem("jwt_token");
+        alert("Account not found. Please create an account first.");
         return;
       }
       setShowGoogleModal(false);
