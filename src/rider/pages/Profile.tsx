@@ -135,19 +135,13 @@ export function Profile() {
   };
 
   const rawDob = profile?.date_of_birth || (profile as any)?.dob;
-  const info = [
-    ["Full Name", name],
-    ["Phone Number", profile?.phone || "No phone number"],
-    ["Email", profile?.email || "No email address"],
-    ["Date of Birth", rawDob || "Not specified"],
-    ["Gender", normalizeGender(profile?.gender) || "Not specified"],
-    ["Address", profile?.address || "Not specified"],
-    ["Referral Code", profile?.referral_code || "None"],
-  ];
+  const userRole = profile?.role ? (profile.role.charAt(0).toUpperCase() + profile.role.slice(1)) : "Rider";
+  const hasPhone = Boolean(profile?.phone && profile.phone.trim() !== "");
+  const isPhoneVerified = Boolean(profile?.phone_verified && hasPhone);
 
   return (
     <AccountShell active="Profile">
-      <h1 className="mb-4 text-2xl font-extrabold">Edit Profile Details</h1>
+      <h1 className="mb-4 text-2xl font-extrabold">Profile Details</h1>
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
         <StatCard value={stats.totalRides.toString()} label="Total Rides" />
         <StatCard value={balance} label="Wallet Balance" />
@@ -182,99 +176,73 @@ export function Profile() {
                 <p className="text-xs sm:text-sm text-muted-foreground">Member since {memberSince}</p>
               </div>
             </div>
-            <button
-              disabled={saving}
-              onClick={handleSave}
-              className="flex items-center gap-2 rounded-xl gradient-brand px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.02] disabled:opacity-50 cursor-pointer"
-            >
-              <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Profile"}
-            </button>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+              Account Type: {userRole}
+            </span>
           </div>
 
           <div className="mt-6 grid gap-6 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Full Name
-              </label>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-              />
+              </p>
+              <p className="mt-1 text-sm font-extrabold text-foreground">
+                {name}
+              </p>
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Phone Number (Verified)
-              </label>
-              <input
-                type="text"
-                disabled
-                value={profile?.phone || ""}
-                className="mt-1 block w-full rounded-xl border border-input bg-muted px-4 py-2.5 font-bold text-muted-foreground cursor-not-allowed focus:outline-none"
-              />
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                {isPhoneVerified ? "Phone Number (Verified)" : "Phone Number"}
+              </p>
+              <p className="mt-1 text-sm font-extrabold text-foreground">
+                {hasPhone ? profile?.phone : "Not specified"}
+              </p>
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Email
-              </label>
-              <input
-                type="email"
-                value={editEmail}
-                onChange={(e) => setEditEmail(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-              />
+              </p>
+              <p className="mt-1 text-sm font-extrabold text-foreground">
+                {profile?.email || "Not specified"}
+              </p>
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Date of Birth
-              </label>
-              <input
-                type="date"
-                value={editDob}
-                onChange={(e) => setEditDob(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-              />
+              </p>
+              <p className="mt-1 text-sm font-extrabold text-foreground">
+                {rawDob || "Not specified"}
+              </p>
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Gender
-              </label>
-              <select
-                value={editGender}
-                onChange={(e) => setEditGender(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
+              </p>
+              <p className="mt-1 text-sm font-extrabold text-foreground">
+                {normalizeGender(profile?.gender) || "Not specified"}
+              </p>
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Address
-              </label>
-              <input
-                type="text"
-                value={editAddress}
-                onChange={(e) => setEditAddress(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-              />
+              </p>
+              <p className="mt-1 text-sm font-extrabold text-foreground">
+                {profile?.address || "Not specified"}
+              </p>
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Referral Code
-              </label>
-              <div className="mt-1 block w-full rounded-xl border border-border bg-secondary/30 px-4 py-2.5 font-extrabold text-primary">
+              </p>
+              <p className="mt-1 text-sm font-extrabold text-primary">
                 {profile?.referral_code || "ZRGRA08151"}
-              </div>
+              </p>
             </div>
           </div>
         </div>

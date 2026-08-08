@@ -89,42 +89,30 @@ export function Login() {
     }
   };
 
+  const [pendingGoogleUser, setPendingGoogleUser] = useState<any>(null);
   const [showRoleSelectorModal, setShowRoleSelectorModal] = useState(false);
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [googleModalEmail, setGoogleModalEmail] = useState("");
   const [googleModalName, setGoogleModalName] = useState("");
 
-  const handleGoogleLoginClick = () => {
-    setShowRoleSelectorModal(true);
-  };
-
-  const executeGoogleLogin = async (targetRole: "rider" | "driver") => {
-    setShowRoleSelectorModal(false);
+  const handleGoogleLogin = async () => {
     if (loading) return;
     setLoading(true);
     try {
+      let googleUser: any = null;
+
       if (firebaseAuth) {
         try {
           const provider = new GoogleAuthProvider();
           provider.setCustomParameters({ prompt: "select_account" });
           const result = await signInWithPopup(firebaseAuth, provider);
           if (result?.user?.email) {
-            const res = await apiFetch("/api/auth/google-login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: result.user.email,
-                fullName: result.user.displayName || result.user.email.split("@")[0],
-                photoUrl: result.user.photoURL || "",
-                firebaseUid: result.user.uid || "",
-                role: targetRole
-              })
-            });
-            const data = await res.json();
-            if (res.ok) {
-              handleSessionAndNavigate(data);
-              return;
-            }
+            googleUser = {
+              email: result.user.email,
+              fullName: result.user.displayName || result.user.email.split("@")[0],
+              photoUrl: result.user.photoURL || "",
+              firebaseUid: result.user.uid || ""
+            };
           }
         } catch (fbErr: any) {
           if (fbErr.code === "auth/popup-closed-by-user") {
@@ -145,10 +133,63 @@ export function Login() {
         }
       }
 
-      // Fallback Google Sign-In Modal
-      setShowGoogleModal(true);
+      if (!googleUser) {
+        // Fallback Google Sign-In Modal if popup blocked or unavailable
+        setShowGoogleModal(true);
+        setLoading(false);
+        return;
+      }
+
+      // Check backend for existing account
+      const res = await apiFetch("/api/auth/google-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(googleUser)
+      });
+      const data = await res.json();
+
+      if (res.ok && data?.data?.user) {
+        const userObj = data.data.user;
+        // If user already existed in database, log in directly to their role dashboard
+        if (!data.isNewUser && userObj.role) {
+          handleSessionAndNavigate(data);
+          return;
+        }
+
+        // New Google User -> prompt Rider / Driver Selection
+        setPendingGoogleUser(googleUser);
+        setShowRoleSelectorModal(true);
+      } else {
+        alert(data.message || "Google Sign-In failed.");
+      }
     } catch (err: any) {
       alert("Unable to sign in with Google. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectRoleAndComplete = async (targetRole: "rider" | "driver") => {
+    setShowRoleSelectorModal(false);
+    if (!pendingGoogleUser) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch("/api/auth/google-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...pendingGoogleUser,
+          role: targetRole
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        handleSessionAndNavigate(data);
+      } else {
+        alert(data.message || "Sign-in failed.");
+      }
+    } catch (err) {
+      alert("Sign-in failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -319,7 +360,7 @@ export function Login() {
             {/* Primary Google Sign-In Button */}
             <button
               type="button"
-              onClick={handleGoogleLoginClick}
+              onClick={handleGoogleLogin}
               disabled={loading}
               className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl gradient-brand py-4 px-4 font-extrabold text-primary-foreground shadow-glow transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50"
             >
@@ -472,7 +513,7 @@ export function Login() {
               {/* Rider Option */}
               <button
                 type="button"
-                onClick={() => executeGoogleLogin("rider")}
+                onClick={() => selectRoleAndComplete("rider")}
                 className="w-full text-left rounded-2xl border border-border bg-background p-4 transition-all hover:border-primary hover:bg-primary/5 hover:shadow-soft cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
@@ -491,7 +532,7 @@ export function Login() {
               {/* Driver Option */}
               <button
                 type="button"
-                onClick={() => executeGoogleLogin("driver")}
+                onClick={() => selectRoleAndComplete("driver")}
                 className="w-full text-left rounded-2xl border border-border bg-background p-4 transition-all hover:border-primary hover:bg-primary/5 hover:shadow-soft cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
