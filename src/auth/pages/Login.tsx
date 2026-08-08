@@ -309,36 +309,14 @@ export function Login() {
             <h2 className="mt-3 text-3xl font-extrabold">{t("sign_in_title")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("sign_in_sub")}</p>
 
-            {/* Login Mode Toggle Tabs */}
-            <div className="mt-6 flex rounded-2xl border border-border p-1 bg-secondary/30">
-              <button
-                type="button"
-                onClick={() => setLoginMode("password")}
-                className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all ${
-                  loginMode === "password" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Password Login
-              </button>
-              <button
-                type="button"
-                onClick={() => setLoginMode("phone")}
-                className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all ${
-                  loginMode === "phone" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                📱 Phone OTP Login
-              </button>
-            </div>
-
-            {/* Google Sign-In Button */}
+            {/* Primary Google Sign-In Button */}
             <button
               type="button"
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-card py-3.5 px-4 font-bold text-foreground shadow-soft transition-all hover:bg-secondary/60 hover:border-primary/40 cursor-pointer disabled:opacity-50"
+              className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl gradient-brand py-4 px-4 font-extrabold text-primary-foreground shadow-glow transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50"
             >
-              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+              <svg className="h-6 w-6 shrink-0 bg-white rounded-full p-1" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
@@ -347,144 +325,92 @@ export function Login() {
               <span>Continue with Google</span>
             </button>
 
-            <div className="relative my-5 flex items-center justify-center">
+            <div className="relative my-6 flex items-center justify-center">
               <div className="w-full border-t border-border" />
               <span className="absolute bg-card px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                or sign in with
+                or sign in with email
               </span>
             </div>
 
-            {/* Standard Password Login Form */}
-            {loginMode === "password" ? (
-              <form className="space-y-4" onSubmit={handleLogin}>
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="username">
-                    Email, Username, or Phone
-                  </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <AtSign className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <input
-                      id="username"
-                      type="text"
-                      placeholder="username, email, or +91..."
-                      required
-                      autoComplete="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="block text-sm font-semibold" htmlFor="password">
-                      Password
-                    </label>
-                    <Link
-                      to="/forgot-password"
-                      className="text-xs font-semibold text-primary hover:underline text-right"
-                    >
-                      Forgot Password?
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter password"
-                      required
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 py-1">
+            {/* Standard Email Login Form */}
+            <form className="space-y-4" onSubmit={handleLogin}>
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold" htmlFor="username">
+                  Email or Username
+                </label>
+                <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
+                  <AtSign className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                   <input
-                    id="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    id="username"
+                    type="text"
+                    placeholder="name@example.com"
+                    required
+                    autoComplete="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
                   />
-                  <label htmlFor="remember-me" className="text-xs font-medium text-muted-foreground select-none cursor-pointer">
-                    Remember Me (stores login credentials locally)
-                  </label>
                 </div>
+              </div>
 
-                <button
-                  type="submit"
-                  id="login-submit"
-                  disabled={loading}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-50 cursor-pointer"
-                >
-                  {loading ? "Signing in..." : t("nav_login")}
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              </form>
-            ) : (
-              /* Phone + OTP Login Form */
-              <form className="space-y-4" onSubmit={otpSent ? handlePhoneVerify : handleSendOtp}>
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold">
-                    {t("enter_phone")}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-sm font-semibold" htmlFor="password">
+                    Password
                   </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Phone className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <input
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      required
-                      disabled={otpSent}
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none"
-                    />
-                  </div>
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-semibold text-primary hover:underline text-right"
+                  >
+                    Forgot Password?
+                  </Link>
                 </div>
+                <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
+                  <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter password"
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-transparent py-3.5 outline-none text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
 
-                {otpSent && (
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold">
-                      {t("enter_otp")}
-                    </label>
-                    <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                      <CheckCircle className="h-4 w-4 flex-shrink-0 text-primary" />
-                      <input
-                        type="text"
-                        maxLength={4}
-                        placeholder="1234"
-                        required
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value)}
-                        className="w-full bg-transparent py-3.5 outline-none font-mono text-lg tracking-widest"
-                      />
-                    </div>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="remember-me" className="text-xs font-medium text-muted-foreground select-none cursor-pointer">
+                  Remember Me
+                </label>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-50 cursor-pointer"
-                >
-                  {loading ? "Processing..." : otpSent ? t("verify_login") : t("send_otp")}
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              </form>
-            )}
+              <button
+                type="submit"
+                id="login-submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary/40 py-3.5 font-bold text-foreground hover:bg-secondary transition-colors disabled:opacity-50 cursor-pointer text-sm"
+              >
+                {loading ? "Signing in..." : "Sign In with Password"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </form>
 
             <p className="mt-5 text-center text-sm text-muted-foreground">
               New to ZipRide?{" "}
