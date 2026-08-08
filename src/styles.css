@@ -265,7 +265,14 @@
   }
 }
 
-/* Glass cards, brand utilities & smooth animations */
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility glass {
   background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(160%);

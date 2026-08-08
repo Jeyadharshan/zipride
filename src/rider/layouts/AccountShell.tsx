@@ -33,29 +33,29 @@ export function AccountShell({ children, active }: { children: ReactNode; active
   const email = profile?.email || "";
 
   return (
-    <div className="min-h-screen bg-background pb-24 lg:pb-8">
+    <div className="min-h-screen bg-background pb-32 lg:pb-8">
       <UserTopNav />
       
       {/* Mobile Account Section Bar & Tabs (visible on small screens < lg) */}
-      <div className="border-b border-border bg-card/60 glass lg:hidden px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-3">
-            <Avatar label={initial} className="h-10 w-10 text-sm" />
+      <div className="border-b border-border bg-card/60 glass lg:hidden px-4 pt-3 pb-2">
+        <div className="flex items-center justify-between gap-3 mb-2.5">
+          <div className="flex items-center gap-2.5">
+            <Avatar label={initial} className="h-9 w-9 text-xs" />
             <div>
-              <p className="text-sm font-bold truncate max-w-[180px]">{name}</p>
-              <p className="text-xs text-muted-foreground truncate max-w-[180px]">{phone || email}</p>
+              <p className="text-xs font-extrabold truncate max-w-[160px] leading-tight">{name}</p>
+              <p className="text-[11px] text-muted-foreground truncate max-w-[160px]">{phone || email}</p>
             </div>
           </div>
           <button
             onClick={signOut}
-            className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20"
+            className="flex items-center gap-1 rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/20 cursor-pointer"
           >
-            <LogOut className="h-3.5 w-3.5" /> Logout
+            <LogOut className="h-3 w-3" /> Logout
           </button>
         </div>
 
-        {/* Horizontal scrollable navigation tabs */}
-        <nav className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {/* Horizontal scrollable navigation tabs without ugly scrollbars */}
+        <nav className="flex gap-2 overflow-x-auto pb-1.5 no-scrollbar">
           {ITEMS.map((it) => {
             const isActive = active === it.label || pathname === it.to;
             return (
@@ -63,7 +63,7 @@ export function AccountShell({ children, active }: { children: ReactNode; active
                 key={it.label}
                 to={it.to}
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                  "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-secondary text-muted-foreground hover:text-foreground",
@@ -116,7 +116,7 @@ export function AccountShell({ children, active }: { children: ReactNode; active
         </aside>
 
         {/* Main Content Area (Profile Info & Edit Profile) */}
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0 pb-28 lg:pb-0">{children}</main>
       </div>
 
       <MobileBottomNav />

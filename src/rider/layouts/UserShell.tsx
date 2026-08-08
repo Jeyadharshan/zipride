@@ -245,7 +245,7 @@ export function MobileBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-card/95 backdrop-blur-md md:hidden shadow-lg">
+    <nav className="fixed inset-x-0 bottom-0 z-40 h-16 grid grid-cols-5 border-t border-border bg-card/95 backdrop-blur-md md:hidden shadow-lg">
       {BOTTOM_NAV.map((n) => {
         const active = pathname === n.to;
         return (
@@ -253,14 +253,17 @@ export function MobileBottomNav() {
             key={n.to}
             to={n.to}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold transition-colors",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-semibold transition-colors",
               active
-                ? "text-primary font-bold border-t-2 border-primary -mt-[2px]"
+                ? "text-primary font-bold"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <n.icon className={cn("h-5 w-5", active ? "scale-110 text-primary transition-transform" : "")} />
-            <span className="truncate max-w-[64px] text-center">{n.label}</span>
+            {active && (
+              <span className="absolute top-0 h-1 w-8 rounded-b-full bg-primary" />
+            )}
+            <n.icon className={cn("h-5 w-5 shrink-0", active ? "scale-110 text-primary transition-transform" : "")} />
+            <span className="truncate max-w-[68px] text-center leading-tight">{n.label}</span>
           </Link>
         );
       })}
@@ -279,9 +282,9 @@ export function UserShell({
 }) {
   const max = width === "narrow" ? "max-w-2xl" : width === "wide" ? "max-w-7xl" : "max-w-6xl";
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-8">
+    <div className="min-h-screen bg-background pb-32 md:pb-8">
       <UserTopNav />
-      <main className={cn("mx-auto px-4 py-6 sm:px-6 sm:py-8", max, className)}>{children}</main>
+      <main className={cn("mx-auto px-4 py-6 sm:px-6 sm:py-8 pb-32 md:pb-8", max, className)}>{children}</main>
       <MobileBottomNav />
     </div>
   );
