@@ -174,132 +174,26 @@ export function Profile() {
 
       <Reveal delay={0.08}>
         <div className="mt-6 rounded-3xl border border-border bg-card p-4 sm:p-7 shadow-soft">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
-            <div className="flex items-center gap-4">
-              <Avatar label={initial} className="h-14 w-14 sm:h-16 sm:w-16 text-lg sm:text-xl" />
-              <div>
-                <p className="text-lg sm:text-xl font-extrabold">{name}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">Member since {memberSince}</p>
-              </div>
+          <div className="flex items-center gap-4 border-b border-border pb-6">
+            <Avatar label={initial} className="h-14 w-14 sm:h-16 sm:w-16 text-lg sm:text-xl" />
+            <div>
+              <p className="text-lg sm:text-xl font-extrabold">{name}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Member since {memberSince}</p>
             </div>
-            {!isEditing ? (
-              <button
-                onClick={startEditing}
-                className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:border-primary cursor-pointer"
-              >
-                <Pencil className="h-4 w-4" /> Edit Profile
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={saving}
-                  onClick={handleSave}
-                  className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
-                >
-                  <Save className="h-4 w-4" /> Save
-                </button>
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
-                >
-                  <X className="h-4 w-4" /> Cancel
-                </button>
-              </div>
-            )}
           </div>
 
-          {!isEditing ? (
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              {info.map(([label, value]) => (
-                <div key={label}>
-                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    {label}
-                  </p>
-                  <p className={`mt-1 font-bold ${label === "Referral Code" ? "text-primary" : ""}`}>
-                    {value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-                />
+          <div className="mt-6 grid gap-6 sm:grid-cols-2">
+            {info.map(([label, value]) => (
+              <div key={label}>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  {label}
+                </p>
+                <p className={`mt-1 font-bold ${label === "Referral Code" ? "text-primary" : ""}`}>
+                  {value}
+                </p>
               </div>
-
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Phone Number (Verified)
-                </label>
-                <input
-                  type="text"
-                  disabled
-                  value={profile?.phone || ""}
-                  className="mt-1 block w-full rounded-xl border border-input bg-muted px-4 py-2.5 font-bold text-muted-foreground cursor-not-allowed focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Date of Birth
-                </label>
-                <input
-                  type="date"
-                  value={editDob}
-                  onChange={(e) => setEditDob(e.target.value)}
-                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Gender
-                </label>
-                <select
-                  value={editGender}
-                  onChange={(e) => setEditGender(e.target.value)}
-                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-                >
-                  <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  className="mt-1 block w-full rounded-xl border border-input bg-background px-4 py-2.5 font-bold transition-colors focus:border-primary focus:outline-none"
-                />
-              </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       </Reveal>
 
