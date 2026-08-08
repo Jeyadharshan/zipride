@@ -140,28 +140,30 @@ export function Login() {
         return;
       }
 
-      // Check backend for existing account
+      // Check backend for existing account on Login page
       const res = await apiFetch("/api/auth/google-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(googleUser)
+        body: JSON.stringify({ ...googleUser, mode: "login" })
       });
       const data = await res.json();
 
-      if (res.ok && data?.data?.user) {
-        const userObj = data.data.user;
-        // If user already existed in database, log in directly to their role dashboard
-        if (!data.isNewUser && userObj.role) {
-          handleSessionAndNavigate(data);
-          return;
+      if (!res.ok || data.notFound || data.isNewUser || !data?.data?.user) {
+        // Sign out Firebase session to prevent state retention
+        if (firebaseAuth && firebaseAuth.currentUser) {
+          await firebaseAuth.signOut().catch(() => {});
         }
+        sessionStorage.clear();
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("user_role");
+        localStorage.removeItem("jwt_token");
 
-        // New Google User -> prompt Rider / Driver Selection
-        setPendingGoogleUser(googleUser);
-        setShowRoleSelectorModal(true);
-      } else {
-        alert(data.message || "Google Sign-In failed.");
+        alert("Account not found. Please create an account first.");
+        return;
       }
+
+      // Existing Google account -> Log in directly to stored role home page
+      handleSessionAndNavigate(data);
     } catch (err: any) {
       alert("Unable to sign in with Google. Please try again.");
     } finally {

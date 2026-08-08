@@ -607,6 +607,15 @@ export const AuthController = {
       const isNewUser = !user;
 
       if (!user) {
+        if (req.body.mode === 'login' || req.body.isLoginOnly) {
+          return res.status(404).json({
+            success: false,
+            notFound: true,
+            isNewUser: true,
+            message: 'Account not found. Please create an account first.'
+          });
+        }
+
         if (!role) {
           return res.json({
             success: true,
