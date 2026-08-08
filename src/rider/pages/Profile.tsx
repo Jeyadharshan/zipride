@@ -162,19 +162,19 @@ export function Profile() {
       </div>
 
       <Reveal delay={0.08}>
-        <div className="mt-6 rounded-3xl border border-border bg-card p-7 shadow-soft">
+        <div className="mt-6 rounded-3xl border border-border bg-card p-4 sm:p-7 shadow-soft">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
             <div className="flex items-center gap-4">
-              <Avatar label={initial} className="h-16 w-16 text-xl" />
+              <Avatar label={initial} className="h-14 w-14 sm:h-16 sm:w-16 text-lg sm:text-xl" />
               <div>
-                <p className="text-xl font-extrabold">{name}</p>
-                <p className="text-sm text-muted-foreground">Member since {memberSince}</p>
+                <p className="text-lg sm:text-xl font-extrabold">{name}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Member since {memberSince}</p>
               </div>
             </div>
             {!isEditing ? (
               <button
                 onClick={startEditing}
-                className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 font-semibold transition-colors hover:border-primary"
+                className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:border-primary cursor-pointer"
               >
                 <Pencil className="h-4 w-4" /> Edit Profile
               </button>
@@ -183,13 +183,13 @@ export function Profile() {
                 <button
                   disabled={saving}
                   onClick={handleSave}
-                  className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
                 >
                   <Save className="h-4 w-4" /> Save
                 </button>
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 font-semibold transition-colors hover:border-destructive hover:text-destructive"
+                  className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
                 >
                   <X className="h-4 w-4" /> Cancel
                 </button>
