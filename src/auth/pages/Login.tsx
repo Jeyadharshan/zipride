@@ -89,56 +89,76 @@ export function Login() {
     }
   };
 
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleModalEmail, setGoogleModalEmail] = useState("");
+  const [googleModalName, setGoogleModalName] = useState("");
+
   const handleGoogleLogin = async () => {
     if (loading) return;
     setLoading(true);
     try {
-      let googleEmail = "";
-      let googleName = "";
-      let photoUrl = "";
-
       if (firebaseAuth) {
         try {
           const provider = new GoogleAuthProvider();
           const result = await signInWithPopup(firebaseAuth, provider);
-          googleEmail = result.user.email || "";
-          googleName = result.user.displayName || "";
-          photoUrl = result.user.photoURL || "";
+          if (result?.user?.email) {
+            const res = await apiFetch("/api/auth/google-login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: result.user.email,
+                fullName: result.user.displayName || result.user.email.split("@")[0],
+                photoUrl: result.user.photoURL || ""
+              })
+            });
+            const data = await res.json();
+            if (res.ok) {
+              handleSessionAndNavigate(data);
+              return;
+            }
+          }
         } catch (fbErr: any) {
-          console.warn("Firebase Google Sign-In popup:", fbErr.message);
+          console.warn("Firebase Google Sign-In popup notice:", fbErr.message);
         }
       }
 
-      if (!googleEmail) {
-        const inputEmail = prompt("Enter your Google Account Email ID:");
-        if (!inputEmail) {
-          setLoading(false);
-          return;
-        }
-        googleEmail = inputEmail.trim();
-        const inputName = prompt("Enter your Google Account Display Name:", googleEmail.split("@")[0]);
-        googleName = inputName ? inputName.trim() : googleEmail.split("@")[0];
-      }
+      // If Firebase popup is disabled or unauthorized domain, show Google Sign-In Modal
+      setShowGoogleModal(true);
+    } catch (err: any) {
+      alert("Google Sign-In error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const submitGoogleModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleModalEmail.trim()) {
+      alert("Please enter a valid Google Account Email.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const email = googleModalEmail.trim();
+      const name = googleModalName.trim() || email.split("@")[0];
       const res = await apiFetch("/api/auth/google-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: googleEmail,
-          fullName: googleName,
-          photoUrl
+          email,
+          fullName: name,
+          photoUrl: ""
         })
       });
-
       const data = await res.json();
       if (!res.ok) {
         alert(data.message || "Google Sign-In failed.");
         return;
       }
-
+      setShowGoogleModal(false);
       handleSessionAndNavigate(data);
     } catch (err: any) {
-      alert("Google Sign-In error: " + err.message);
+      alert("Google Login error: " + (err.message || err));
     } finally {
       setLoading(false);
     }
@@ -471,6 +491,82 @@ export function Login() {
           </div>
         </Reveal>
       </div>
+
+      {/* Custom Google Account Login Modal */}
+      {showGoogleModal && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
+              <div className="flex items-center gap-2.5">
+                <svg className="h-6 w-6" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <h3 className="text-lg font-extrabold text-foreground">Sign in with Google</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(false)}
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-4">
+              Enter your Google Account email to complete authentication into ZipRide.
+            </p>
+
+            <form onSubmit={submitGoogleModal} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Google Email ID
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="grahambillu27@gmail.com"
+                  value={googleModalEmail}
+                  onChange={(e) => setGoogleModalEmail(e.target.value)}
+                  className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Display Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Billy Graham"
+                  value={googleModalName}
+                  onChange={(e) => setGoogleModalName(e.target.value)}
+                  className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleModal(false)}
+                  className="rounded-xl border border-border px-4 py-2.5 text-xs font-bold transition-colors hover:bg-secondary cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                >
+                  {loading ? "Signing in..." : "Continue to ZipRide"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
