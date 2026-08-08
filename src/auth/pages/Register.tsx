@@ -8,6 +8,7 @@ import { auth as firebaseAuth } from "@/lib/firebase/config";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { registerSocketAuth } from "@/shared/lib/socket";
 import { apiFetch } from "@/lib/api";
+import { setPendingVerification } from "@/lib/firebase/auth";
 
 export function Register() {
   const [fullName, setFullName] = useState("");
