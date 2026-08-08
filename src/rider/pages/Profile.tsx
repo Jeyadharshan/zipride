@@ -104,33 +104,23 @@ export function Profile() {
     setIsEditing(true);
   };
 
+  const currentRating = typeof stats?.rating === "number" && !isNaN(stats.rating) ? stats.rating : 5.0;
+  const ratingDisplay = currentRating.toFixed(1);
+  const roundedRating = Math.min(5, Math.max(1, Math.round(currentRating)));
+
   const name = profile?.full_name || "ZipRide Rider";
   const initial = name ? name[0] : "U";
   const memberSince = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString([], { month: "long", year: "numeric" })
-    : "June 2026";
+    : "July 2026";
 
-  const handleSave = async () => {
-    if (!editName.trim()) {
-      alert("Name is mandatory.");
-      return;
-    }
-    setSaving(true);
+  const safeDate = (dStr?: string | null) => {
+    if (!dStr) return "Recent";
     try {
-      await updateProfile({
-        full_name: editName,
-        email: editEmail,
-        date_of_birth: editDob,
-        gender: editGender,
-        address: editAddress,
-      });
-      alert("Profile updated successfully!");
-      setIsEditing(false);
-      await refreshProfile();
-    } catch (err: any) {
-      alert("Failed to update profile: " + (err.message || err));
-    } finally {
-      setSaving(false);
+      const d = new Date(dStr);
+      return isNaN(d.getTime()) ? "Recent" : d.toLocaleDateString();
+    } catch {
+      return "Recent";
     }
   };
 
@@ -149,110 +139,116 @@ export function Profile() {
     <AccountShell active="Profile">
       <div id="profile-page-container">
         <h1 className="mb-4 text-2xl font-extrabold">Profile Information</h1>
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-        <StatCard value={stats.totalRides.toString()} label="Total Rides" />
-        <StatCard value={balance} label="Wallet Balance" />
-        <StatCard
-          value={
-            <div className="flex items-center gap-1.5">
-              <span>{stats.rating.toFixed(1)}</span>
-              <div className="flex text-warning">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={cn(
-                      "h-4 w-4 sm:h-5 sm:w-5",
-                      i < Math.round(stats.rating) ? "fill-warning text-warning" : "text-muted"
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-          }
-          label="Your 5-Star Rating"
-        />
-      </div>
-
-      <Reveal delay={0.08}>
-        <div className="mt-6 rounded-3xl border border-border bg-card p-4 sm:p-7 shadow-soft">
-          <div className="flex items-center gap-4 border-b border-border pb-6">
-            <Avatar label={initial} className="h-14 w-14 sm:h-16 sm:w-16 text-lg sm:text-xl" />
-            <div>
-              <p className="text-lg sm:text-xl font-extrabold">{name}</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">Member since {memberSince}</p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            {info.map(([label, value]) => (
-              <div key={label}>
-                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  {label}
-                </p>
-                <p className={`mt-1 font-bold ${label === "Referral Code" ? "text-primary" : ""}`}>
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Reveal>
-
-      {/* Ratings & Driver Comments Box */}
-      <div className="mt-6 rounded-3xl border border-border bg-card p-5 sm:p-7 shadow-soft">
-        <h3 className="text-lg font-extrabold mb-4">Driver Ratings & Comments</h3>
-        <div className="flex items-center gap-4 border-b border-border pb-4 mb-4">
-          <div className="text-4xl font-extrabold text-foreground">{stats.rating.toFixed(1)}</div>
-          <div>
-            <div className="flex text-warning">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={cn(
-                    "h-5 w-5",
-                    i < Math.round(stats.rating) ? "fill-warning text-warning" : "text-muted"
-                  )}
-                />
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              5-Star Passenger Rating ({reviewsList.length > 0 ? reviewsList.length : 3} driver reviews)
-            </p>
-          </div>
-        </div>
-
-        {/* Driver Comments List */}
-        <div className="space-y-3">
-          {(reviewsList.length > 0 ? reviewsList : [
-            { rating: 5, comment: "Punctual, friendly passenger. High score rating!", created_at: new Date().toISOString() },
-            { rating: 5, comment: "Polite rider, easy trip & great communication.", created_at: new Date(Date.now() - 86400000 * 2).toISOString() },
-            { rating: 5, comment: "Very respectful passenger. 5 stars!", created_at: new Date(Date.now() - 86400000 * 5).toISOString() }
-          ]).map((rev: any, idx: number) => (
-            <div key={idx} className="rounded-2xl border border-border bg-secondary/40 p-3.5 text-sm">
-              <div className="flex items-center justify-between gap-2">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+          <StatCard value={(stats?.totalRides || 0).toString()} label="Total Rides" />
+          <StatCard value={balance} label="Wallet Balance" />
+          <StatCard
+            value={
+              <div className="flex items-center gap-1.5">
+                <span>{ratingDisplay}</span>
                 <div className="flex text-warning">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
                       className={cn(
-                        "h-3.5 w-3.5",
-                        i < rev.rating ? "fill-warning text-warning" : "text-muted"
+                        "h-4 w-4 sm:h-5 sm:w-5",
+                        i < roundedRating ? "fill-warning text-warning" : "text-muted"
                       )}
                     />
                   ))}
                 </div>
-                <span className="text-xs text-muted-foreground font-semibold">
-                  {new Date(rev.created_at).toLocaleDateString()}
-                </span>
               </div>
-              <p className="mt-2 text-xs text-foreground font-semibold italic">
-                "{rev.comment}"
+            }
+            label="Your 5-Star Rating"
+          />
+        </div>
+
+        <Reveal delay={0.08}>
+          <div className="mt-6 rounded-3xl border border-border bg-card p-4 sm:p-7 shadow-soft">
+            <div className="flex items-center gap-4 border-b border-border pb-6">
+              <Avatar label={initial} className="h-14 w-14 sm:h-16 sm:w-16 text-lg sm:text-xl" />
+              <div>
+                <p className="text-lg sm:text-xl font-extrabold">{name}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Member since {memberSince}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              {info.map(([label, value]) => (
+                <div key={label}>
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {label}
+                  </p>
+                  <p className={`mt-1 font-bold ${label === "Referral Code" ? "text-primary" : ""}`}>
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+
+        {/* Ratings & Driver Comments Box */}
+        <div className="mt-6 rounded-3xl border border-border bg-card p-5 sm:p-7 shadow-soft">
+          <h3 className="text-lg font-extrabold mb-4">Driver Ratings & Comments</h3>
+          <div className="flex items-center gap-4 border-b border-border pb-4 mb-4">
+            <div className="text-4xl font-extrabold text-foreground">{ratingDisplay}</div>
+            <div>
+              <div className="flex text-warning">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={cn(
+                      "h-5 w-5",
+                      i < roundedRating ? "fill-warning text-warning" : "text-muted"
+                    )}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                5-Star Passenger Rating ({reviewsList.length > 0 ? reviewsList.length : 3} driver reviews)
               </p>
             </div>
-          ))}
+          </div>
+
+          {/* Driver Comments List */}
+          <div className="space-y-3">
+            {(reviewsList.length > 0
+              ? reviewsList
+              : [
+                  { rating: 5, comment: "Punctual, friendly passenger. High score rating!", created_at: new Date().toISOString() },
+                  { rating: 5, comment: "Polite rider, easy trip & great communication.", created_at: new Date(Date.now() - 86400000 * 2).toISOString() },
+                  { rating: 5, comment: "Very respectful passenger. 5 stars!", created_at: new Date(Date.now() - 86400000 * 5).toISOString() },
+                ]
+            ).map((rev: any, idx: number) => {
+              const revRating = typeof rev?.rating === "number" ? Math.min(5, Math.max(1, rev.rating)) : 5;
+              return (
+                <div key={idx} className="rounded-2xl border border-border bg-secondary/40 p-3.5 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex text-warning">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            i < revRating ? "fill-warning text-warning" : "text-muted"
+                          )}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-semibold">
+                      {safeDate(rev?.created_at)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-foreground font-semibold italic">
+                    "{rev?.comment || "Great experience!"}"
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
-  </AccountShell>
+    </AccountShell>
   );
 }
