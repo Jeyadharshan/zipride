@@ -604,7 +604,24 @@ export const AuthController = {
       const baseSlug = googleFullName.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
       const derivedUsername = (baseSlug.length >= 3 ? baseSlug : email.split('@')[0]);
 
+      const isNewUser = !user;
+
       if (!user) {
+        if (!role) {
+          return res.json({
+            success: true,
+            isNewUser: true,
+            message: 'Please select a role to complete registration.',
+            data: {
+              user: {
+                email,
+                fullName: googleFullName,
+                photoUrl: photoUrl || ''
+              }
+            }
+          });
+        }
+
         const userId = crypto.randomUUID();
         let targetUsername = derivedUsername;
         let dup = await AuthRepository.findByUsername(targetUsername);
@@ -641,11 +658,8 @@ export const AuthController = {
           referral_code: referralCode,
           profile_image: photoUrl || ''
         };
-      } else if (role && user.role !== targetRole) {
-        await dbQuery('UPDATE profiles SET role = ? WHERE id = ?', [targetRole, user.id]).catch(() => {});
-        user.role = targetRole;
-      }
-        // Update user's profile image or full_name if missing
+      } else {
+        // Existing user profile image or full_name sync
         if (photoUrl && (!user.profile_image || user.profile_image.includes('default'))) {
           await dbQuery('UPDATE profiles SET profile_image = ? WHERE id = ?', [photoUrl, user.id]).catch(() => {});
           user.profile_image = photoUrl;
@@ -661,6 +675,7 @@ export const AuthController = {
 
       return res.json({
         success: true,
+        isNewUser,
         message: 'Google Sign-In successful.',
         data: {
           token,
