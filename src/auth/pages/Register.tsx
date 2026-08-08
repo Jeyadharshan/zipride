@@ -77,11 +77,17 @@ export function Register() {
   const [pendingGoogleUser, setPendingGoogleUser] = useState<any>(null);
   const [showRoleSelectorModal, setShowRoleSelectorModal] = useState(false);
 
+  /**
+   * REGISTER PAGE — NEW AND EXISTING GOOGLE ACCOUNTS.
+   * NEW user  → show Rider/Driver selector modal → create account → navigate to role home.
+   * EXISTING  → load existing role → navigate directly (no duplicate account creation).
+   * Never shows OTP. Never asks for phone number.
+   */
   const handleGoogleLogin = async () => {
     if (loading) return;
     setLoading(true);
     try {
-      let googleUser: any = null;
+      let googleUser: { email: string; fullName: string; photoUrl: string; firebaseUid: string } | null = null;
 
       if (firebaseAuth) {
         try {
@@ -97,57 +103,58 @@ export function Register() {
             };
           }
         } catch (fbErr: any) {
-          if (fbErr.code === "auth/popup-closed-by-user") {
-            setLoading(false);
-            return;
-          }
+          if (fbErr.code === "auth/popup-closed-by-user") return;
           if (fbErr.code === "auth/popup-blocked") {
-            alert("Sign-in popup was blocked by your browser. Please allow popups for this site and try again.");
-            setLoading(false);
-            return;
+            // Prompt fallback for blocked popup
+            const userEmail = prompt("Google popup was blocked.\nEnter your Google Account email to register:");
+            if (!userEmail) return;
+            const userName = prompt("Enter your Display Name:", userEmail.split("@")[0]) || userEmail.split("@")[0];
+            googleUser = {
+              email: userEmail.trim(),
+              fullName: userName.trim(),
+              photoUrl: "",
+              firebaseUid: ""
+            };
+          } else {
+            console.warn("[Register] Firebase Google Sign-In:", fbErr.code || fbErr.message);
           }
-          console.warn("Firebase Google Sign-In notice:", fbErr.code || fbErr.message);
         }
       }
 
       if (!googleUser) {
-        // Fallback prompt if popup unavailable
-        const userEmail = prompt("Enter your Google Account email to register:");
-        if (!userEmail) {
-          setLoading(false);
-          return;
-        }
-        const userName = prompt("Enter your Display Name:", userEmail.split("@")[0]) || userEmail.split("@")[0];
-        googleUser = {
-          email: userEmail.trim(),
-          fullName: userName.trim(),
-          photoUrl: "",
-          firebaseUid: ""
-        };
+        alert("Google Sign-In is unavailable. Please try again.");
+        return;
       }
 
-      // Check backend for existing account on Register page
+      // Check backend: existing vs new account (mode: 'register' allows creation)
       const res = await apiFetch("/api/auth/google-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...googleUser, mode: "register" })
+        body: JSON.stringify({
+          email: googleUser.email,
+          fullName: googleUser.fullName,
+          photoUrl: googleUser.photoUrl,
+          firebaseUid: googleUser.firebaseUid,
+          mode: "register"   // REGISTER: allow new account creation
+        })
       });
       const data = await res.json();
 
-      if (res.ok && data?.data?.user) {
-        const userObj = data.data.user;
-        // If user already existed in database, log in directly to their role dashboard
-        if (!data.isNewUser && userObj.role) {
-          handleSessionAndNavigate(data);
-          return;
-        }
-
-        // New Google User -> prompt Rider / Driver Selection
-        setPendingGoogleUser(googleUser);
-        setShowRoleSelectorModal(true);
-      } else {
-        alert(data.message || "Google Sign-In failed.");
+      if (!res.ok) {
+        alert(data.message || "Google Sign-In failed. Please try again.");
+        return;
       }
+
+      // EXISTING account: data.isNewUser is false and user has a stored role
+      if (!data.isNewUser && data?.data?.user?.role) {
+        handleSessionAndNavigate(data);
+        return;
+      }
+
+      // NEW account: backend returned isNewUser: true (no role yet)
+      // → show Rider/Driver selector so user can choose
+      setPendingGoogleUser(googleUser);
+      setShowRoleSelectorModal(true);
     } catch (err: any) {
       alert("Unable to sign in with Google. Please try again.");
     } finally {
@@ -160,25 +167,30 @@ export function Register() {
     if (!pendingGoogleUser) return;
     setLoading(true);
     try {
+      // Re-call backend with the chosen role to create the profile
       const res = await apiFetch("/api/auth/google-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...pendingGoogleUser,
+          email: pendingGoogleUser.email,
+          fullName: pendingGoogleUser.fullName,
+          photoUrl: pendingGoogleUser.photoUrl,
+          firebaseUid: pendingGoogleUser.firebaseUid,
           role: targetRole,
           mode: "register"
         })
       });
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data?.data?.user) {
         handleSessionAndNavigate(data);
       } else {
-        alert(data.message || "Registration failed.");
+        alert(data.message || "Registration failed. Please try again.");
       }
     } catch (err) {
       alert("Registration failed. Please try again.");
     } finally {
       setLoading(false);
+      setPendingGoogleUser(null);
     }
   };
 

@@ -89,17 +89,37 @@ export function Login() {
     }
   };
 
-  const [pendingGoogleUser, setPendingGoogleUser] = useState<any>(null);
-  const [showRoleSelectorModal, setShowRoleSelectorModal] = useState(false);
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [googleModalEmail, setGoogleModalEmail] = useState("");
   const [googleModalName, setGoogleModalName] = useState("");
 
+  /**
+   * LOGIN PAGE — EXISTING ACCOUNTS ONLY.
+   * After Firebase Google authentication, checks the ZipRide DB.
+   * If account EXISTS → navigate to role page.
+   * If account DOES NOT EXIST → sign out Firebase, clear session, show error.
+   * Never creates a new account. Never shows role selector.
+   */
   const handleGoogleLogin = async () => {
     if (loading) return;
     setLoading(true);
+
+    const clearAndBlock = async (message: string) => {
+      // Sign out Firebase so the user is not left in an authenticated state
+      try {
+        if (firebaseAuth && firebaseAuth.currentUser) {
+          await firebaseAuth.signOut();
+        }
+      } catch (_) {}
+      sessionStorage.clear();
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_role");
+      localStorage.removeItem("jwt_token");
+      alert(message);
+    };
+
     try {
-      let googleUser: any = null;
+      let googleUser: { email: string; fullName: string; photoUrl: string; firebaseUid: string } | null = null;
 
       if (firebaseAuth) {
         try {
@@ -115,86 +135,61 @@ export function Login() {
             };
           }
         } catch (fbErr: any) {
-          if (fbErr.code === "auth/popup-closed-by-user") {
-            setLoading(false);
-            return;
-          }
+          if (fbErr.code === "auth/popup-closed-by-user") return;
           if (fbErr.code === "auth/popup-blocked") {
-            alert("Sign-in popup was blocked by your browser. Please allow popups for this site and try again.");
-            setLoading(false);
+            // Show fallback modal instead of alerting
+            setShowGoogleModal(true);
             return;
           }
           if (fbErr.code === "auth/network-request-failed") {
-            alert("Network connection error. Please check your internet connection and try again.");
-            setLoading(false);
+            alert("Network error. Please check your internet connection and try again.");
             return;
           }
-          console.warn("Firebase Google Sign-In notice:", fbErr.code || fbErr.message);
+          console.warn("[Login] Firebase Google Sign-In:", fbErr.code || fbErr.message);
         }
       }
 
+      // Popup unavailable → open fallback manual email modal
       if (!googleUser) {
-        // Fallback Google Sign-In Modal if popup blocked or unavailable
         setShowGoogleModal(true);
-        setLoading(false);
         return;
       }
 
-      // Check backend for existing account on Login page
-      const res = await apiFetch("/api/auth/google-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...googleUser, mode: "login" })
-      });
-      const data = await res.json();
-
-      if (!res.ok || data.notFound || data.isNewUser || !data?.data?.user) {
-        // Sign out Firebase session to prevent state retention
-        if (firebaseAuth && firebaseAuth.currentUser) {
-          await firebaseAuth.signOut().catch(() => {});
-        }
-        sessionStorage.clear();
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("user_role");
-        localStorage.removeItem("jwt_token");
-
-        alert("Account not found. Please create an account first.");
-        return;
-      }
-
-      // Existing Google account -> Log in directly to stored role home page
-      handleSessionAndNavigate(data);
+      await loginWithGoogleUser(googleUser, clearAndBlock);
     } catch (err: any) {
-      alert("Unable to sign in with Google. Please try again.");
+      await clearAndBlock("Unable to sign in with Google. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const selectRoleAndComplete = async (targetRole: "rider" | "driver") => {
-    setShowRoleSelectorModal(false);
-    if (!pendingGoogleUser) return;
-    setLoading(true);
-    try {
-      const res = await apiFetch("/api/auth/google-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...pendingGoogleUser,
-          role: targetRole
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        handleSessionAndNavigate(data);
-      } else {
-        alert(data.message || "Sign-in failed.");
-      }
-    } catch (err) {
-      alert("Sign-in failed. Please try again.");
-    } finally {
-      setLoading(false);
+  // Shared login helper — used by both the Firebase popup path and the fallback manual-email modal
+  const loginWithGoogleUser = async (
+    googleUser: { email: string; fullName: string; photoUrl: string; firebaseUid: string },
+    onBlocked: (msg: string) => Promise<void>
+  ) => {
+    const res = await apiFetch("/api/auth/google-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: googleUser.email,
+        fullName: googleUser.fullName,
+        photoUrl: googleUser.photoUrl,
+        firebaseUid: googleUser.firebaseUid,
+        mode: "login"   // LOGIN: only allow existing accounts
+      })
+    });
+    const data = await res.json();
+
+    // Backend returns 404 / notFound / isNewUser if account does not exist
+    const accountMissing = !res.ok || data.notFound || data.isNewUser === true || !data?.data?.user || !data?.data?.user?.role;
+    if (accountMissing) {
+      await onBlocked("Account not found. Please create an account first.");
+      return;
     }
+
+    // Account exists → navigate to the stored role's home page
+    handleSessionAndNavigate(data);
   };
 
   const submitGoogleModal = async (e: React.FormEvent) => {
@@ -204,33 +199,28 @@ export function Login() {
       return;
     }
     setLoading(true);
+
+    const clearAndBlock = async (message: string) => {
+      try {
+        if (firebaseAuth && firebaseAuth.currentUser) await firebaseAuth.signOut();
+      } catch (_) {}
+      sessionStorage.clear();
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_role");
+      localStorage.removeItem("jwt_token");
+      alert(message);
+    };
+
     try {
       const email = googleModalEmail.trim();
       const name = googleModalName.trim() || email.split("@")[0];
-      const res = await apiFetch("/api/auth/google-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          fullName: name,
-          photoUrl: "",
-          mode: "login"
-        })
-      });
-      const data = await res.json();
-      if (!res.ok || data.notFound || data.isNewUser || !data?.data?.user) {
-        setShowGoogleModal(false);
-        sessionStorage.clear();
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("user_role");
-        localStorage.removeItem("jwt_token");
-        alert("Account not found. Please create an account first.");
-        return;
-      }
       setShowGoogleModal(false);
-      handleSessionAndNavigate(data);
+      await loginWithGoogleUser(
+        { email, fullName: name, photoUrl: "", firebaseUid: "" },
+        clearAndBlock
+      );
     } catch (err: any) {
-      alert("Google Login error: " + (err.message || err));
+      await clearAndBlock("Google Login error: " + (err.message || err));
     } finally {
       setLoading(false);
     }
