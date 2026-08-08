@@ -93,7 +93,7 @@ export function DriverShell({ children, className }: { children: ReactNode; clas
 
       {/* Driver Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md md:hidden animate-in fade-in slide-in-from-top-4 duration-200">
+        <div className="fixed inset-0 z-[99999] flex flex-col bg-background md:hidden animate-in fade-in slide-in-from-top-4 duration-200">
           <div className="flex h-16 items-center justify-between border-b border-border px-4">
             <Logo to="/driver/dashboard" />
             <button
