@@ -863,19 +863,11 @@ export const AuthController = {
       const cleanPhone = phone.trim();
       let user = await AuthRepository.findByPhone(cleanPhone);
       if (!user) {
-        const userId = crypto.randomUUID();
-        const username = `user_${cleanPhone.replace(/\D/g, '').slice(-8)}`;
-        const dummyHash = await bcrypt.hash('phone_otp_sso_2026', 10);
-
-        user = await AuthRepository.createRider({
-          id: userId,
-          email: `${username}@zipride.app`,
-          fullName: `Rider ${cleanPhone.slice(-4)}`,
-          phone: cleanPhone,
-          passwordHash: dummyHash,
-          username
+        return res.status(404).json({
+          success: false,
+          notFound: true,
+          message: 'Account not found. Please create an account first.'
         });
-        await WalletService.getBalance(userId);
       }
 
       let verificationStatus = 'approved';
