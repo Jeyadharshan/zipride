@@ -145,7 +145,7 @@
      Background: Deep Slate Charcoal (#14131A -> oklch(0.15 0.03 85))
      Foreground: Soft Cream Silver (#FEFCE8 -> oklch(0.98 0.02 95))
      Primary: Vibrant Sunburst Gold (#FBBF24 -> oklch(0.80 0.19 85))
-  */
+   */
   --background: oklch(0.15 0.03 85);
   --foreground: oklch(0.98 0.02 95);
   --card: oklch(0.20 0.04 85);
@@ -386,4 +386,60 @@ button:hover, .btn-hover:hover {
 
 button:active {
   transform: translateY(0) scale(0.98);
+}
+
+/* Mobile-specific fixes to prevent horizontal overflow and improve layout
+   on small devices (320px, 360px, 375px, 390px, 414px, 430px). These
+   rules only apply on narrow viewports and intentionally do not change
+   desktop styles. */
+@media (max-width: 430px) {
+  /* Prevent any accidental horizontal scrolling */
+  html, body { overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+
+  /* Make media scale down safely */
+  img, picture, video, svg { max-width: 100%; height: auto; display: block; }
+
+  /* Allow the centered form wrapper to use full available width */
+  .max-w-md, .max-w-lg { max-width: 100% !important; padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+
+  /* Reduce heavy card padding on small screens so it fits comfortably */
+  .max-w-md .rounded-3xl, .max-w-lg .rounded-3xl, .rounded-3xl.p-8 { padding: 1rem !important; }
+
+  /* Make inputs and buttons fit the viewport and not overflow */
+  input, textarea, select, button { max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+
+  /* Reduce oversized headings on mobile while keeping visual hierarchy */
+  .text-5xl { font-size: 1.75rem !important; line-height: 1.1 !important; }
+  .text-3xl { font-size: 1.35rem !important; }
+
+  /* Tighter spacing for compact mobile layout */
+  .p-6, .sm\:p-12 { padding: 0.75rem !important; }
+  .p-8 { padding: 1rem !important; }
+  .mt-8 { margin-top: 1.25rem !important; }
+  .mt-6 { margin-top: 1rem !important; }
+
+  /* Make small utility elements scale down */
+  .h-96.w-96 { max-width: 220px !important; max-height: 220px !important; }
+
+  /* Ensure mono OTP input doesn't overflow with wide tracking */
+  .font-mono.text-lg { font-size: 1.125rem !important; letter-spacing: 0.12em !important; }
+  .tracking-widest { letter-spacing: 0.08em !important; }
+
+  /* Demo buttons in a 3-column grid shrink and wrap text safely */
+  .grid.grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; gap: 0.5rem !important; }
+  .grid.grid-cols-3 button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+
+  /* Reduce icon & spacing sizes used inside the card */
+  .mb-6.flex.items-center.gap-3.lg\:hidden .h-10 { height: 40px !important; width: 40px !important; }
+
+  /* Minor fixes for borders and full-width separators */
+  .w-full.border-t { width: 100% !important; }
+}
+
+/* Additional safety net at very small sizes */
+@media (max-width: 375px) {
+  .text-5xl { font-size: 1.5rem !important; }
+  .text-3xl { font-size: 1.2rem !important; }
+  .p-8 { padding: 0.75rem !important; }
+  .max-w-md, .max-w-lg { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
 }
