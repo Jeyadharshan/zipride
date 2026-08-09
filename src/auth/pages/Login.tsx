@@ -89,45 +89,138 @@ export function Login() {
     }
   };
 
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleModalEmail, setGoogleModalEmail] = useState("");
+  const [googleModalName, setGoogleModalName] = useState("");
+
+  /**
+   * LOGIN PAGE — EXISTING ACCOUNTS ONLY.
+   * After Firebase Google authentication, checks the ZipRide DB.
+   * If account EXISTS → navigate to role page.
+   * If account DOES NOT EXIST → sign out Firebase, clear session, show error.
+   * Never creates a new account. Never shows role selector.
+   */
   const handleGoogleLogin = async () => {
     if (loading) return;
     setLoading(true);
+
+    const clearAndBlock = async (message: string) => {
+      // Sign out Firebase so the user is not left in an authenticated state
+      try {
+        if (firebaseAuth && firebaseAuth.currentUser) {
+          await firebaseAuth.signOut();
+        }
+      } catch (_) {}
+      sessionStorage.clear();
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_role");
+      localStorage.removeItem("jwt_token");
+      alert(message);
+    };
+
     try {
-      let googleEmail = "user.google@zipride.app";
-      let googleName = "Google User";
-      let photoUrl = "";
+      let googleUser: { email: string; fullName: string; photoUrl: string; firebaseUid: string } | null = null;
 
       if (firebaseAuth) {
         try {
           const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: "select_account" });
           const result = await signInWithPopup(firebaseAuth, provider);
-          googleEmail = result.user.email || googleEmail;
-          googleName = result.user.displayName || googleName;
-          photoUrl = result.user.photoURL || "";
-        } catch (fbErr) {
-          console.warn("Firebase Google Sign-In fallback mode:", fbErr);
+          if (result?.user?.email) {
+            googleUser = {
+              email: result.user.email,
+              fullName: result.user.displayName || result.user.email.split("@")[0],
+              photoUrl: result.user.photoURL || "",
+              firebaseUid: result.user.uid || ""
+            };
+          }
+        } catch (fbErr: any) {
+          if (fbErr.code === "auth/popup-closed-by-user") return;
+          if (fbErr.code === "auth/popup-blocked") {
+            // Show fallback modal instead of alerting
+            setShowGoogleModal(true);
+            return;
+          }
+          if (fbErr.code === "auth/network-request-failed") {
+            alert("Network error. Please check your internet connection and try again.");
+            return;
+          }
+          console.warn("[Login] Firebase Google Sign-In:", fbErr.code || fbErr.message);
         }
       }
 
-      const res = await apiFetch("/api/auth/google-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: googleEmail,
-          fullName: googleName,
-          photoUrl
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || "Google Sign-In failed.");
+      // Popup unavailable → open fallback manual email modal
+      if (!googleUser) {
+        setShowGoogleModal(true);
         return;
       }
 
-      handleSessionAndNavigate(data);
+      await loginWithGoogleUser(googleUser, clearAndBlock);
     } catch (err: any) {
-      alert("Google Sign-In error: " + err.message);
+      await clearAndBlock("Unable to sign in with Google. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Shared login helper — used by both the Firebase popup path and the fallback manual-email modal
+  const loginWithGoogleUser = async (
+    googleUser: { email: string; fullName: string; photoUrl: string; firebaseUid: string },
+    onBlocked: (msg: string) => Promise<void>
+  ) => {
+    const res = await apiFetch("/api/auth/google-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: googleUser.email,
+        fullName: googleUser.fullName,
+        photoUrl: googleUser.photoUrl,
+        firebaseUid: googleUser.firebaseUid,
+        mode: "login"   // LOGIN: only allow existing accounts
+      })
+    });
+    const data = await res.json();
+
+    // Backend returns 404 / notFound / isNewUser if account does not exist
+    const accountMissing = !res.ok || data.notFound || data.isNewUser === true || !data?.data?.user || !data?.data?.user?.role;
+    if (accountMissing) {
+      await onBlocked("Account not found. Please create an account first.");
+      return;
+    }
+
+    // Account exists → navigate to the stored role's home page
+    handleSessionAndNavigate(data);
+  };
+
+  const submitGoogleModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleModalEmail.trim()) {
+      alert("Please enter a valid Google Account Email.");
+      return;
+    }
+    setLoading(true);
+
+    const clearAndBlock = async (message: string) => {
+      try {
+        if (firebaseAuth && firebaseAuth.currentUser) await firebaseAuth.signOut();
+      } catch (_) {}
+      sessionStorage.clear();
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_role");
+      localStorage.removeItem("jwt_token");
+      alert(message);
+    };
+
+    try {
+      const email = googleModalEmail.trim();
+      const name = googleModalName.trim() || email.split("@")[0];
+      setShowGoogleModal(false);
+      await loginWithGoogleUser(
+        { email, fullName: name, photoUrl: "", firebaseUid: "" },
+        clearAndBlock
+      );
+    } catch (err: any) {
+      await clearAndBlock("Google Login error: " + (err.message || err));
     } finally {
       setLoading(false);
     }
@@ -140,8 +233,7 @@ export function Login() {
       return;
     }
     setOtpSent(true);
-    setOtpCode("1234"); // Default fast demo OTP
-    alert("OTP sent to " + phoneNumber + ". Demo OTP: 1234");
+    // OTP sent to registered number
   };
 
   const handlePhoneVerify = async (e: React.FormEvent) => {
@@ -263,182 +355,108 @@ export function Login() {
             <h2 className="mt-3 text-3xl font-extrabold">{t("sign_in_title")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("sign_in_sub")}</p>
 
-            {/* Login Mode Toggle Tabs */}
-            <div className="mt-6 flex rounded-2xl border border-border p-1 bg-secondary/30">
-              <button
-                type="button"
-                onClick={() => setLoginMode("password")}
-                className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all ${
-                  loginMode === "password" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Password Login
-              </button>
-              <button
-                type="button"
-                onClick={() => setLoginMode("phone")}
-                className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all ${
-                  loginMode === "phone" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                📱 Phone OTP Login
-              </button>
-            </div>
-
-            {/* Google Sign-In Button */}
+            {/* Primary Google Sign-In Button */}
             <button
               type="button"
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="mt-4 flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-card py-3.5 font-bold text-foreground shadow-soft transition-all hover:bg-secondary/50 cursor-pointer disabled:opacity-50"
+              className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl gradient-brand py-4 px-4 font-extrabold text-primary-foreground shadow-glow transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <svg className="h-6 w-6 shrink-0 bg-white rounded-full p-1" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
               </svg>
-              {t("google_login")}
+              <span>Continue with Google</span>
             </button>
 
-            <div className="relative my-4 flex items-center justify-center">
+            <div className="relative my-6 flex items-center justify-center">
               <div className="w-full border-t border-border" />
               <span className="absolute bg-card px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                or continue with
+                or sign in with email
               </span>
             </div>
 
-            {/* Standard Password Login Form */}
-            {loginMode === "password" ? (
-              <form className="space-y-4" onSubmit={handleLogin}>
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold" htmlFor="username">
-                    Email, Username, or Phone
-                  </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <AtSign className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <input
-                      id="username"
-                      type="text"
-                      placeholder="username, email, or +91..."
-                      required
-                      autoComplete="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="block text-sm font-semibold" htmlFor="password">
-                      Password
-                    </label>
-                    <Link
-                      to="/forgot-password"
-                      className="text-xs font-semibold text-primary hover:underline text-right"
-                    >
-                      Forgot Password?
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter password"
-                      required
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 py-1">
+            {/* Standard Email Login Form */}
+            <form className="space-y-4" onSubmit={handleLogin}>
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold" htmlFor="username">
+                  Email or Username
+                </label>
+                <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
+                  <AtSign className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                   <input
-                    id="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    id="username"
+                    type="text"
+                    placeholder="name@example.com"
+                    required
+                    autoComplete="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-transparent py-3.5 outline-none text-sm font-medium"
                   />
-                  <label htmlFor="remember-me" className="text-xs font-medium text-muted-foreground select-none cursor-pointer">
-                    Remember Me (stores login credentials locally)
-                  </label>
                 </div>
+              </div>
 
-                <button
-                  type="submit"
-                  id="login-submit"
-                  disabled={loading}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-50 cursor-pointer"
-                >
-                  {loading ? "Signing in..." : t("nav_login")}
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              </form>
-            ) : (
-              /* Phone + OTP Login Form */
-              <form className="space-y-4" onSubmit={otpSent ? handlePhoneVerify : handleSendOtp}>
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold">
-                    {t("enter_phone")}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-sm font-semibold" htmlFor="password">
+                    Password
                   </label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                    <Phone className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <input
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      required
-                      disabled={otpSent}
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full bg-transparent py-3.5 outline-none"
-                    />
-                  </div>
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-semibold text-primary hover:underline text-right"
+                  >
+                    Forgot Password?
+                  </Link>
                 </div>
+                <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
+                  <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter password"
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-transparent py-3.5 outline-none text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
 
-                {otpSent && (
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold">
-                      {t("enter_otp")}
-                    </label>
-                    <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
-                      <CheckCircle className="h-4 w-4 flex-shrink-0 text-primary" />
-                      <input
-                        type="text"
-                        maxLength={4}
-                        placeholder="1234"
-                        required
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value)}
-                        className="w-full bg-transparent py-3.5 outline-none font-mono text-lg tracking-widest"
-                      />
-                    </div>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="remember-me" className="text-xs font-medium text-muted-foreground select-none cursor-pointer">
+                  Remember Me
+                </label>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-50 cursor-pointer"
-                >
-                  {loading ? "Processing..." : otpSent ? t("verify_login") : t("send_otp")}
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              </form>
-            )}
+              <button
+                type="submit"
+                id="login-submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary/40 py-3.5 font-bold text-foreground hover:bg-secondary transition-colors disabled:opacity-50 cursor-pointer text-sm"
+              >
+                {loading ? "Signing in..." : "Sign In with Password"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </form>
 
             <p className="mt-5 text-center text-sm text-muted-foreground">
               New to ZipRide?{" "}
@@ -446,48 +464,6 @@ export function Login() {
                 Create a free account
               </Link>
             </p>
-
-            {/* Quick Demo Accounts */}
-            <div className="mt-5 border-t border-border pt-4 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">
-                Quick Demo Accounts
-              </p>
-              <div className="grid grid-cols-3 gap-2 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMode("password");
-                    setUsername("rider@zipride.com");
-                    setPassword("rider123");
-                  }}
-                  className="rounded-xl border border-border bg-secondary/50 py-2.5 hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  👤 Rider
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMode("password");
-                    setUsername("driver@zipride.com");
-                    setPassword("driver123");
-                  }}
-                  className="rounded-xl border border-border bg-secondary/50 py-2.5 hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  🚗 Driver
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginMode("password");
-                    setUsername("admin@zipride.com");
-                    setPassword("admin123");
-                  }}
-                  className="rounded-xl border border-border bg-secondary/50 py-2.5 hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  ⚡ Admin
-                </button>
-              </div>
-            </div>
 
             <div className="mt-6 flex items-center justify-center gap-4 border-t border-border pt-5 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -503,6 +479,83 @@ export function Login() {
           </div>
         </Reveal>
       </div>
+
+
+      {/* Custom Google Account Login Modal */}
+      {showGoogleModal && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
+              <div className="flex items-center gap-2.5">
+                <svg className="h-6 w-6" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <h3 className="text-lg font-extrabold text-foreground">Sign in with Google</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(false)}
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-4">
+              Enter your Google Account email to complete authentication into ZipRide.
+            </p>
+
+            <form onSubmit={submitGoogleModal} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Google Email ID
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="grahambillu27@gmail.com"
+                  value={googleModalEmail}
+                  onChange={(e) => setGoogleModalEmail(e.target.value)}
+                  className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Display Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Billy Graham"
+                  value={googleModalName}
+                  onChange={(e) => setGoogleModalName(e.target.value)}
+                  className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleModal(false)}
+                  className="rounded-xl border border-border px-4 py-2.5 text-xs font-bold transition-colors hover:bg-secondary cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                >
+                  {loading ? "Signing in..." : "Continue to ZipRide"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

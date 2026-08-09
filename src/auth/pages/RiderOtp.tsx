@@ -50,18 +50,29 @@ export function Otp() {
     setLoading(true);
 
     try {
-      if (!pending || !pending.confirmationResult) {
-        throw new Error("No pending OTP verification session found. Please request OTP again.");
+      if (!pending || !pending.registrationDetails) {
+        throw new Error("No pending registration session found. Please fill the registration form again.");
       }
 
       const code = digits.join("");
-      const result = await pending.confirmationResult.confirm(code);
-      const firebaseUser = result.user;
-      
-      console.log("[Firebase OTP Verify Result] Firebase UID:", firebaseUser.uid, "Phone:", firebaseUser.phoneNumber);
+      const reg = pending.registrationDetails;
 
-      if (pending.registrationDetails?.isNewUser) {
-        const reg = pending.registrationDetails;
+      if (pending.otpType === "email" || reg.email) {
+        // Verify code against backend Email OTP endpoint
+        const verifyRes = await apiFetch("/api/auth/verify-email-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: reg.email, otp: code })
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok) {
+          throw new Error(verifyData.message || "Invalid or expired verification code.");
+        }
+      } else if (pending.confirmationResult) {
+        await pending.confirmationResult.confirm(code);
+      }
+
+      if (reg.isNewUser) {
         const passwordHash = reg.password ? await hashPassword(reg.password) : "";
 
         if (reg.role === "driver" && reg.driverDetails) {
@@ -92,9 +103,25 @@ export function Otp() {
             body: JSON.stringify(body)
           });
           
+          const regData = await res.json();
           if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.message || "Driver registration failed.");
+            throw new Error(regData.message || "Driver registration failed.");
+          }
+
+          if (regData?.data?.user) {
+            const user = regData.data.user;
+            sessionStorage.setItem("driver_session", JSON.stringify({
+              id: user.id,
+              full_name: user.fullName,
+              role: "driver",
+              username: user.username,
+              email: user.email,
+              phone: user.phone
+            }));
+            if (regData.data.token) {
+              sessionStorage.setItem("jwt_token", regData.data.token);
+              localStorage.setItem("jwt_token", regData.data.token);
+            }
           }
 
           navigate({ to: "/driver/verification", replace: true });
@@ -117,9 +144,25 @@ export function Otp() {
             body: JSON.stringify(body)
           });
           
+          const regData = await res.json();
           if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.message || "Rider registration failed.");
+            throw new Error(regData.message || "Rider registration failed.");
+          }
+
+          if (regData?.data?.user) {
+            const user = regData.data.user;
+            sessionStorage.setItem("rider_session", JSON.stringify({
+              id: user.id,
+              full_name: user.fullName,
+              role: "rider",
+              username: user.username,
+              email: user.email,
+              phone: user.phone
+            }));
+            if (regData.data.token) {
+              sessionStorage.setItem("jwt_token", regData.data.token);
+              localStorage.setItem("jwt_token", regData.data.token);
+            }
           }
 
           navigate({ to: "/rider/home", replace: true });
@@ -145,10 +188,10 @@ export function Otp() {
     <div className="grid min-h-screen place-items-center bg-background px-6 py-10">
       <Reveal className="w-full max-w-md">
         <Link
-          to="/login"
+          to="/register"
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> Back to Register
         </Link>
         <motion.div
           animate={isError ? { x: [-10, 10, -10, 10, -5, 5, 0] } : {}}
@@ -158,11 +201,11 @@ export function Otp() {
           <div className="mx-auto mb-5 w-max animate-float">
             <LogoMark className="h-16 w-16" />
           </div>
-          <h1 className="text-2xl font-extrabold">Verify your number</h1>
+          <h1 className="text-2xl font-extrabold">Verify Email Address</h1>
           <p className="mt-2 text-muted-foreground">
-            We sent a 6-digit code to{" "}
+            We sent a 6-digit verification code to{" "}
             <span className="font-semibold text-foreground">
-              {pending?.registrationDetails?.phone || "your number"}
+              {pending?.registrationDetails?.email || pending?.email || "your email ID"}
             </span>
           </p>
 
@@ -192,7 +235,7 @@ export function Otp() {
             disabled={!filled || loading}
             className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl gradient-brand py-4 font-bold text-primary-foreground shadow-glow transition-transform enabled:hover:scale-[1.01] disabled:opacity-40"
           >
-            {loading ? "Verifying..." : "Verify & Continue"} <ArrowRight className="h-5 w-5" />
+            {loading ? "Verifying..." : "Verify & Create Account"} <ArrowRight className="h-5 w-5" />
           </button>
 
           <p className="mt-5 text-sm text-muted-foreground">
@@ -201,7 +244,19 @@ export function Otp() {
             ) : (
               <button
                 disabled={loading}
-                onClick={() => setTimer(28)}
+                onClick={async () => {
+                  setTimer(28);
+                  if (pending?.registrationDetails?.email) {
+                    try {
+                      await apiFetch("/api/auth/send-email-otp", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: pending.registrationDetails.email })
+                      });
+                      // OTP sent directly to registered email
+                    } catch (e) {}
+                  }
+                }}
                 className="font-semibold text-primary hover:underline disabled:opacity-50"
               >
                 Resend code
@@ -209,7 +264,7 @@ export function Otp() {
             )}
           </p>
           <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5" /> Your number stays private & secure
+            <ShieldCheck className="h-3.5 w-3.5" /> Your information stays private & secure
           </p>
         </motion.div>
       </Reveal>

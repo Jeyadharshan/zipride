@@ -3,15 +3,9 @@ import { cn } from "@/shared/utils/cn";
 import type L from "leaflet";
 import { fetchRoute } from "@/map/services/routing";
 
-// Leaflet CSS is injected once dynamically to avoid SSR crash (window not defined)
-let leafletCssInjected = false;
+// Leaflet CSS is imported locally in styles.css
 function injectLeafletCss() {
-  if (leafletCssInjected || typeof window === "undefined") return;
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-  document.head.appendChild(link);
-  leafletCssInjected = true;
+  // Bundled locally via styles.css
 }
 
 // Transparent 1x1 pixel shadow to avoid CDN tracking prevention warning

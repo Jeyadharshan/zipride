@@ -10,3 +10,8 @@
 > the editor, so keep the branch in a working state.
 
 <!-- LOVABLE:END -->
+
+## Project Focus & Constraints
+> [!IMPORTANT]
+> **Backend Only Focus**: Do NOT edit or modify any frontend code (e.g. `src/`, `public/`, frontend UI components) without asking the user first. All work in this project must strictly focus on the backend, server, and database layer.
+

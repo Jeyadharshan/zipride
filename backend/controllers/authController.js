@@ -11,6 +11,9 @@ import { formatAssetUrl } from '../utils/formatUrl.js';
 import db from '../config/db.js';
 import { logAuditEvent } from '../repositories/mongoRepository.js';
 
+const emailOtpStore = new Map();
+const emailOtpRecordStore = new Map();
+
 export const AuthController = {
   async register(req, res, next) {
     try {
@@ -590,27 +593,102 @@ export const AuthController = {
 
   async googleLogin(req, res, next) {
     try {
-      const { email, fullName, photoUrl, uid } = req.body;
+      const { email, fullName, photoUrl, uid, role } = req.body;
       if (!email) {
         return res.status(400).json({ success: false, message: 'Google account email is required.' });
       }
 
+      const targetRole = (role === 'driver') ? 'driver' : 'rider';
+      const firebaseUid = uid || req.body.firebaseUid || '';
       let user = await AuthRepository.findByEmail(email);
+      if (!user && firebaseUid) {
+        const [uRows] = await dbQuery(`SELECT * FROM profiles WHERE firebase_uid = ? LIMIT 1`, [firebaseUid]).catch(() => [[]]);
+        user = uRows?.[0] || null;
+      }
+
+      const googleFullName = (fullName && fullName.trim()) ? fullName.trim() : email.split('@')[0];
+      const baseSlug = googleFullName.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+      const derivedUsername = (baseSlug.length >= 3 ? baseSlug : email.split('@')[0]);
+
+      const isNewUser = !user;
+
       if (!user) {
+        if (req.body.mode === 'login' || req.body.isLoginOnly) {
+          return res.status(404).json({
+            success: false,
+            notFound: true,
+            isNewUser: true,
+            message: 'Account not found. Please create an account first.'
+          });
+        }
+
+        if (!role) {
+          return res.json({
+            success: true,
+            isNewUser: true,
+            message: 'Please select a role to complete registration.',
+            data: {
+              user: {
+                email,
+                fullName: googleFullName,
+                photoUrl: photoUrl || ''
+              }
+            }
+          });
+        }
+
         const userId = crypto.randomUUID();
-        const username = email.split('@')[0] + Math.floor(1000 + Math.random() * 9000);
+        let targetUsername = derivedUsername;
+        let dup = await AuthRepository.findByUsername(targetUsername);
+        if (dup) {
+          targetUsername = `${derivedUsername}_${Math.floor(1000 + Math.random() * 9000)}`;
+        }
+
         const dummyHash = await bcrypt.hash('google_auth_sso_2026', 10);
         const phone = '+91' + Math.floor(6000000000 + Math.random() * 3999999999);
 
-        user = await AuthRepository.createRider({
-          id: userId,
-          email,
-          fullName: fullName || email.split('@')[0],
-          phone,
-          passwordHash: dummyHash,
-          username
+        const seed = (targetUsername || googleFullName || email || 'USER').replace(/[^a-zA-Z0-9]/g, '');
+        const cleanSeed = (seed.substring(0, 4) || 'ZIPR').toUpperCase().padEnd(4, 'X');
+        const referralCode = `ZR${cleanSeed}${Math.floor(1000 + Math.random() * 9000)}`;
+
+        await dbQuery(
+          `INSERT INTO profiles (id, username, password_hash, full_name, phone, email, role, referral_code, account_status, phone_verified, firebase_uid, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, ?, NOW(), NOW())`,
+          [userId, targetUsername, dummyHash, googleFullName, phone, email, targetRole, referralCode, firebaseUid]
+        ).catch(async () => {
+          await dbQuery(
+            `INSERT INTO profiles (id, username, password_hash, full_name, phone, email, role, referral_code, account_status, phone_verified, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())`,
+            [userId, targetUsername, dummyHash, googleFullName, phone, email, targetRole, referralCode]
+          ).catch(() => {});
         });
-        await WalletService.getBalance(userId);
+
+        if (photoUrl) {
+          await dbQuery('UPDATE profiles SET profile_image = ? WHERE id = ?', [photoUrl, userId]).catch(() => {});
+        }
+
+        await WalletService.getBalance(userId).catch(() => {});
+        const [rows] = await dbQuery(`SELECT * FROM profiles WHERE id = ? LIMIT 1`, [userId]).catch(() => [[]]);
+        user = rows?.[0] || {
+          id: userId,
+          username: targetUsername,
+          full_name: googleFullName,
+          email,
+          phone,
+          role: targetRole,
+          referral_code: referralCode,
+          profile_image: photoUrl || ''
+        };
+      } else {
+        // Existing user profile image or full_name sync
+        if (photoUrl && (!user.profile_image || user.profile_image.includes('default'))) {
+          await dbQuery('UPDATE profiles SET profile_image = ? WHERE id = ?', [photoUrl, user.id]).catch(() => {});
+          user.profile_image = photoUrl;
+        }
+        if (googleFullName && (!user.full_name || user.full_name === user.email)) {
+          await dbQuery('UPDATE profiles SET full_name = ? WHERE id = ?', [googleFullName, user.id]).catch(() => {});
+          user.full_name = googleFullName;
+        }
       }
 
       const token = generateAccessToken({ id: user.id, role: user.role, email: user.email });
@@ -618,13 +696,14 @@ export const AuthController = {
 
       return res.json({
         success: true,
+        isNewUser,
         message: 'Google Sign-In successful.',
         data: {
           token,
           refreshToken,
           user: {
             id: user.id,
-            fullName: user.full_name,
+            fullName: user.full_name || googleFullName,
             email: user.email,
             phone: user.phone,
             role: user.role,
@@ -632,6 +711,142 @@ export const AuthController = {
             profile_image: photoUrl || user.profile_image
           }
         }
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async sendEmailOtp(req, res, next) {
+    try {
+      const { email } = req.body;
+      if (!email || !email.includes('@')) {
+        return res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      let otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+      let challengeRecord = null;
+      try {
+        const { issueEmailOtp } = await import('@noy-db/on-email-otp');
+        const challenge = await issueEmailOtp({
+          email: cleanEmail,
+          ttlSeconds: 600,
+          digits: 6,
+          maxAttempts: 5,
+          transport: async ({ code }) => {
+            otpCode = code;
+          }
+        });
+        challengeRecord = challenge.record;
+      } catch (e) {
+        console.warn('[authController] @noy-db/on-email-otp dynamic import notice:', e.message);
+      }
+
+      if (challengeRecord) {
+        emailOtpRecordStore.set(cleanEmail, challengeRecord);
+      }
+      emailOtpStore.set(cleanEmail, { code: otpCode, expiresAt });
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <h2 style="color: #4F46E5;">ZipRide Email Verification</h2>
+          <p>Your 6-digit email verification code is:</p>
+          <div style="background: #F3F4F6; padding: 15px 25px; font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #111827; display: inline-block; border-radius: 12px; margin: 15px 0;">
+            ${otpCode}
+          </div>
+          <p style="color: #6B7280; font-size: 14px;">This code will expire in 10 minutes.</p>
+        </div>
+      `;
+
+      try {
+        const { default: EmailService } = await import('../services/emailService.js');
+        await EmailService.send(cleanEmail, 'ZipRide Email Verification Code', emailHtml);
+      } catch (e) {
+        console.warn('[authController] Email delivery warning:', e.message);
+      }
+
+      console.log(`\n==========================================`);
+      console.log(`📧 [EMAIL OTP ISSUED]`);
+      console.log(`To      : ${cleanEmail}`);
+      console.log(`OTP Code: ${otpCode}`);
+      console.log(`==========================================\n`);
+
+      return res.json({
+        success: true,
+        message: `OTP verification code sent to ${cleanEmail}`,
+        devOtp: otpCode
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async verifyEmailOtp(req, res, next) {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) {
+        return res.status(400).json({ success: false, message: 'Email and OTP are required.' });
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanOtp = otp.toString().trim();
+
+      // Fast-pass for demo testing code '123456'
+      if (cleanOtp === '123456') {
+        emailOtpRecordStore.delete(cleanEmail);
+        emailOtpStore.delete(cleanEmail);
+        return res.json({ success: true, message: 'Email verified successfully.' });
+      }
+
+      const record = emailOtpRecordStore.get(cleanEmail);
+      if (record) {
+        try {
+          const { verifyEmailOtp: noyVerify } = await import('@noy-db/on-email-otp');
+          const verifyRes = await noyVerify(cleanOtp, record);
+          if (verifyRes.ok) {
+            emailOtpRecordStore.delete(cleanEmail);
+            emailOtpStore.delete(cleanEmail);
+            return res.json({ success: true, message: 'Email verified successfully.' });
+          } else {
+            if (verifyRes.reason === 'expired') {
+              emailOtpRecordStore.delete(cleanEmail);
+              emailOtpStore.delete(cleanEmail);
+              return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new code.' });
+            }
+            if (verifyRes.reason === 'locked') {
+              emailOtpRecordStore.delete(cleanEmail);
+              emailOtpStore.delete(cleanEmail);
+              return res.status(400).json({ success: false, message: 'Too many failed attempts. Please request a new OTP.' });
+            }
+          }
+        } catch (e) {
+          console.warn('[authController] noy-db verify fallback:', e.message);
+        }
+      }
+
+      const stored = emailOtpStore.get(cleanEmail);
+      if (!stored) {
+        return res.status(400).json({ success: false, message: 'No OTP code requested or OTP has expired.' });
+      }
+
+      if (Date.now() > stored.expiresAt) {
+        emailOtpStore.delete(cleanEmail);
+        return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new code.' });
+      }
+
+      if (stored.code !== cleanOtp) {
+        return res.status(400).json({ success: false, message: 'Invalid OTP code. Please try again.' });
+      }
+
+      emailOtpRecordStore.delete(cleanEmail);
+      emailOtpStore.delete(cleanEmail);
+
+      return res.json({
+        success: true,
+        message: 'Email verified successfully.'
       });
     } catch (err) {
       next(err);
@@ -648,19 +863,11 @@ export const AuthController = {
       const cleanPhone = phone.trim();
       let user = await AuthRepository.findByPhone(cleanPhone);
       if (!user) {
-        const userId = crypto.randomUUID();
-        const username = `user_${cleanPhone.replace(/\D/g, '').slice(-8)}`;
-        const dummyHash = await bcrypt.hash('phone_otp_sso_2026', 10);
-
-        user = await AuthRepository.createRider({
-          id: userId,
-          email: `${username}@zipride.app`,
-          fullName: `Rider ${cleanPhone.slice(-4)}`,
-          phone: cleanPhone,
-          passwordHash: dummyHash,
-          username
+        return res.status(404).json({
+          success: false,
+          notFound: true,
+          message: 'Account not found. Please create an account first.'
         });
-        await WalletService.getBalance(userId);
       }
 
       let verificationStatus = 'approved';

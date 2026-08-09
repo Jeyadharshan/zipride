@@ -38,5 +38,32 @@ export const AuthController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async sendEmailOtp(req, res, next) {
+    try {
+      const { AuthController: BackendAuth } = await import('../../backend/controllers/authController.js');
+      return BackendAuth.sendEmailOtp(req, res, next);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async verifyEmailOtp(req, res, next) {
+    try {
+      const { AuthController: BackendAuth } = await import('../../backend/controllers/authController.js');
+      return BackendAuth.verifyEmailOtp(req, res, next);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async googleLogin(req, res, next) {
+    try {
+      const { AuthController: BackendAuth } = await import('../../backend/controllers/authController.js');
+      return BackendAuth.googleLogin(req, res, next);
+    } catch (err) {
+      next(err);
+    }
   }
 };

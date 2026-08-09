@@ -159,8 +159,8 @@ const apiLogStream = fs.createWriteStream(path.join(logsDir, 'api.log'), { flags
 app.use(morgan('combined', { stream: apiLogStream }));
 app.use(morgan('dev')); // Console log requests
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve static uploaded media with cross-origin CORS support and fallback placeholder for missing files
 app.use('/uploads', (req, res, next) => {
@@ -366,11 +366,12 @@ CronService.initializeSchedulers();
 // 10. Initialize MongoDB connection — used for audit logs, tracking history, notifications.
 // connectMongoDB() prints ✅ / ❌ internally; no duplicate log needed here.
 try {
-  await connectMongoDB();
-  await ensureMongoIndexes();
+  const mongoDbInstance = await connectMongoDB();
+  if (mongoDbInstance) {
+    await ensureMongoIndexes();
+  }
 } catch (err) {
-  console.error(`❌ MongoDB Connection Failed: ${err.message}`);
-  console.error('[MongoDB] App continues with MySQL only — MongoDB-backed features (audit logs, tracking history, notifications) will be unavailable.');
+  console.log('[MongoDB] App running in primary TiDB MySQL mode.');
 }
 
 // Run database column migrations

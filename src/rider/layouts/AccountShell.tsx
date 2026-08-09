@@ -9,7 +9,7 @@ import {
   LogOut,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { UserTopNav } from "./UserShell";
+import { UserTopNav, MobileBottomNav } from "./UserShell";
 import { useAuth } from "@/auth/hooks/useAuth";
 import { Avatar } from "@/shared/components/kit/Primitives";
 import { cn } from "@/shared/utils/cn";
@@ -33,10 +33,42 @@ export function AccountShell({ children, active }: { children: ReactNode; active
   const email = profile?.email || "";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-32 lg:pb-8">
       <UserTopNav />
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="h-max rounded-2xl border border-border bg-card p-5 shadow-soft lg:sticky lg:top-24">
+      
+      {/* Mobile Account Section Tabs (visible on small screens < lg) */}
+      <div className="border-b border-border bg-card/60 glass lg:hidden px-3 py-2.5">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {ITEMS.map((it) => {
+            const isActive = active === it.label || pathname === it.to;
+            return (
+              <Link
+                key={it.label}
+                to={it.to}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm font-bold"
+                    : "bg-secondary text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <it.icon className="h-3.5 w-3.5" />
+                {it.label}
+              </Link>
+            );
+          })}
+          <button
+            onClick={signOut}
+            className="flex shrink-0 items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 ml-auto cursor-pointer"
+          >
+            <LogOut className="h-3.5 w-3.5" /> Logout
+          </button>
+        </div>
+      </div>
+
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:py-8">
+        {/* Desktop Sidebar (visible on screens >= lg) */}
+        <aside className="hidden h-max rounded-2xl border border-border bg-card p-5 shadow-soft lg:sticky lg:top-24 lg:block">
           <div className="flex flex-col items-center border-b border-border pb-5 text-center">
             <Avatar label={initial} className="h-20 w-20 text-2xl" />
             <p className="mt-3 font-bold">{name}</p>
@@ -71,8 +103,13 @@ export function AccountShell({ children, active }: { children: ReactNode; active
             </button>
           </nav>
         </aside>
-        <main className="main-w-0">{children}</main>
+
+        {/* Main Content Area (Profile Info & Edit Profile) */}
+        <main className="min-w-0 pb-28 lg:pb-0">{children}</main>
       </div>
+
+      <MobileBottomNav />
     </div>
   );
 }
+

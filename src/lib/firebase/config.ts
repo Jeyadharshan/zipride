@@ -1,11 +1,8 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
-const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-const isValidKey = Boolean(apiKey && apiKey !== "your-firebase-api-key" && apiKey.length > 5);
-
 const firebaseConfig = {
-  apiKey: isValidKey ? apiKey : "AIzaSyDummyDevKeyForZipRideAppConfig123",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDummyDevKeyForZipRideAppConfig123",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "zipride-app.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "zipride-app",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "zipride-app.appspot.com",
@@ -18,10 +15,8 @@ let app: any = null;
 let auth: any = null;
 
 try {
-  if (isValidKey) {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    auth = getAuth(app);
-  }
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  auth = getAuth(app);
 } catch (err) {
   console.warn("Firebase initialization deferred:", err);
 }
